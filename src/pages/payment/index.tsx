@@ -1,17 +1,15 @@
 import { CONFIG } from 'src/global-config';
-
-import { PaymentView } from 'src/sections/payment/view';
-
+import { CheckoutView } from 'src/sections/checkout/view';
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Payment - ${CONFIG.appName}` };
+const metadata = { title: `Đặt tour - ${CONFIG.appName}` };
 
 export default function Page() {
   return (
     <>
       <title>{metadata.title}</title>
 
-      <PaymentView />
+      <CheckoutView />
     </>
   );
 }

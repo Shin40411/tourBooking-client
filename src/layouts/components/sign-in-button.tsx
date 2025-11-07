@@ -15,7 +15,7 @@ export function SignInButton({ sx, ...other }: ButtonProps) {
   return (
     <Button
       component={RouterLink}
-      href={paths.homeLogin}
+      href={paths.auth.jwt.signIn}
       variant="contained"
       sx={sx}
       {...other}

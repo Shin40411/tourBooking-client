@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import {
     Box,
     Grid,
@@ -8,6 +8,7 @@ import {
     Stack,
     Tabs,
     Tab,
+    Divider,
 } from '@mui/material';
 import { useGetLocations } from 'src/actions/location';
 import { Field, Form } from 'src/components/hook-form';
@@ -25,6 +26,9 @@ import { paths } from 'src/routes/paths';
 
 type Props = {
     initialValues?: TourFilterValues;
+    onFilterChange?: (filters: TourFilterParams) => void;
+    onClearFilters?: () => void;
+    isSideBar?: boolean;
 };
 
 const DEFAULT_VALUES: TourFilterValues = {
@@ -37,8 +41,13 @@ const DEFAULT_VALUES: TourFilterValues = {
     endDate: null
 };
 
-export default function HomeFilter({ initialValues }: Props) {
-    const { locations, locationsLoading, locationsError } = useGetLocations();
+export default function HomeFilter({ initialValues, onFilterChange, onClearFilters, isSideBar = false }: Props) {
+    const { locations, locationsLoading, locationsError } = useGetLocations({
+        pageNumber: 1,
+        pageSize: 999,
+        enabled: true
+    });
+
     const { toursExtras, toursExtrasLoading, toursExtrasEmpty } = useGetToursExtras();
     const { toursIncludes, toursIncludesEmpty, toursIncludesLoading } = useGetToursIncludes();
     const currentDate = dayjs();
@@ -102,12 +111,253 @@ export default function HomeFilter({ initialValues }: Props) {
             priceMax: String(data.priceRange?.[1] ?? 50000000),
         });
 
-        navigate(`${paths.homeTour}?${params.toString()}`);
+        navigate(`${paths.homeTour.root}?${params.toString()}`);
+
+        onFilterChange?.({
+            title: data.title || '',
+            includes: data.includes || [],
+            extras: data.extras || [],
+            locationIds: (data.locations ?? []).map(Number),
+            fromDate: data.fromDate || undefined,
+            toDate: data.toDate || undefined,
+            priceRange: data.priceRange as [number, number],
+        });
     });
+
 
     const handleClear = () => {
         reset(DEFAULT_VALUES);
+        onClearFilters?.();
     };
+
+    if (isSideBar) {
+        return (
+            <Form methods={methods} onSubmit={onSubmit}>
+                <Box
+                    sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        borderColor: 'divider',
+                    }}
+                >
+                    <Box
+                        sx={{
+                            p: 2.5,
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                        }}
+                    >
+                        <Typography variant="h6" sx={{ mb: 0.5 }}>
+                            Bộ lọc tìm kiếm
+                        </Typography>
+                    </Box>
+
+                    <Box
+                        sx={{
+                            flex: 1,
+                            overflowY: 'auto',
+                            p: 2.5,
+                            '&::-webkit-scrollbar': {
+                                width: '6px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                                bgcolor: 'divider',
+                                borderRadius: '3px',
+                            },
+                        }}
+                    >
+                        <Stack spacing={3.5}>
+                            <Box>
+                                <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                        mb: 2,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1
+                                    }}
+                                >
+                                    <Iconify icon="material-symbols:travel" width={20} />
+                                    Combo trọn gói
+                                </Typography>
+
+                                <Stack spacing={2.5}>
+                                    <Field.Text
+                                        name="title"
+                                        label="Tên tour bạn cần tìm"
+                                        variant='outlined'
+                                        size="small"
+                                        fullWidth
+                                    />
+
+                                    <Field.MultiSelect
+                                        name="includes"
+                                        options={tourIncludeOptions}
+                                        checkbox
+                                        chip
+                                        size="small"
+                                        placeholder={
+                                            toursIncludesLoading
+                                                ? "Đang tải..."
+                                                : toursIncludesEmpty
+                                                    ? "Không có dữ liệu"
+                                                    : "Dịch vụ bao gồm"
+                                        }
+                                        disabled={toursIncludesLoading}
+                                        sx={{ width: '100%' }}
+                                    />
+
+                                    <Field.MultiSelect
+                                        name="extras"
+                                        options={tourExtrasOptions}
+                                        checkbox
+                                        chip
+                                        size="small"
+                                        placeholder={
+                                            toursExtrasLoading
+                                                ? "Đang tải..."
+                                                : toursExtrasEmpty
+                                                    ? "Không có dữ liệu"
+                                                    : "Dịch vụ bổ sung"
+                                        }
+                                        disabled={toursExtrasLoading}
+                                        sx={{ width: '100%' }}
+                                    />
+                                </Stack>
+                            </Box>
+
+                            <Divider />
+
+                            <Box>
+                                <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                        mb: 2,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1
+                                    }}
+                                >
+                                    <Iconify icon="carbon:train-time" width={20} />
+                                    Thời gian & địa điểm
+                                </Typography>
+
+                                <Stack spacing={2.5}>
+                                    <Field.DatePicker
+                                        name='fromDate'
+                                        label="Từ ngày"
+                                        format="DD/MM/YYYY"
+                                        slotProps={{
+                                            textField: { size: 'small', fullWidth: true }
+                                        }}
+                                    />
+
+                                    <Field.DatePicker
+                                        name='toDate'
+                                        label="Đến ngày"
+                                        format="DD/MM/YYYY"
+                                        minDate={currentDate}
+                                        slotProps={{
+                                            textField: { size: 'small', fullWidth: true }
+                                        }}
+                                    />
+
+                                    <Field.MultiSelect
+                                        name="locations"
+                                        options={locationOptions}
+                                        checkbox
+                                        chip
+                                        size="small"
+                                        placeholder={
+                                            locationsLoading
+                                                ? "Đang tải địa điểm..."
+                                                : locationsError
+                                                    ? "Không thể tải địa điểm"
+                                                    : "Bạn muốn đến?"
+                                        }
+                                        disabled={locationsLoading || !!locationsError}
+                                        sx={{ width: '100%' }}
+                                    />
+                                </Stack>
+                            </Box>
+
+                            <Divider />
+
+                            {/* Budget Section */}
+                            <Box>
+                                <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                        mb: 2,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1
+                                    }}
+                                >
+                                    <Iconify icon="mdi:currency-usd" width={20} />
+                                    Ngân sách
+                                </Typography>
+
+                                <Box sx={{ px: 1 }}>
+                                    <Slider
+                                        value={watchValues.priceRange}
+                                        min={0}
+                                        max={50000000}
+                                        step={500000}
+                                        valueLabelDisplay="auto"
+                                        onChange={(_, newValue) => setValue("priceRange", newValue as [number, number])}
+                                        sx={{ mb: 1 }}
+                                    />
+                                    <Stack direction="row" justifyContent="space-between">
+                                        <Typography variant="caption" color="text.secondary">
+                                            {fCurrencyVN(watchValues.priceRange && watchValues.priceRange[0])}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {fCurrencyVN(watchValues.priceRange && watchValues.priceRange[1])}
+                                        </Typography>
+                                    </Stack>
+                                </Box>
+                            </Box>
+                        </Stack>
+                    </Box>
+
+                    <Box
+                        sx={{
+                            p: 2.5,
+                            borderTop: '1px solid',
+                            borderColor: 'divider',
+                            bgcolor: 'background.neutral',
+                        }}
+                    >
+                        <Stack spacing={1.5}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                type="submit"
+                                fullWidth
+                                startIcon={<Iconify icon="line-md:search" />}
+                            >
+                                Tìm kiếm
+                            </Button>
+
+                            {!isDefault && (
+                                <Button
+                                    variant="outlined"
+                                    color="inherit"
+                                    onClick={handleClear}
+                                    fullWidth
+                                    size="small"
+                                >
+                                    Xóa lọc
+                                </Button>
+                            )}
+                        </Stack>
+                    </Box>
+                </Box>
+            </Form>
+        );
+    }
 
     return (
         <Form methods={methods} onSubmit={onSubmit}>

@@ -22,6 +22,7 @@ import { varFade, MotionViewport } from 'src/components/animate';
 import { SectionTitle, SectionCaption } from './components/section-title';
 import { FloatLine, FloatTriangleLeftIcon } from './components/svg-elements';
 import { HeroBackground } from './components/hero-background';
+import { useNavigate } from 'react-router';
 
 // ----------------------------------------------------------------------
 
@@ -33,6 +34,7 @@ const renderLines = () => (
 );
 
 export function HomeHugePackElements({ sx, ...other }: BoxProps) {
+  const navigate = useNavigate();
   return (
     <Box
       component="section"
@@ -79,9 +81,7 @@ export function HomeHugePackElements({ sx, ...other }: BoxProps) {
               size="large"
               color="inherit"
               variant="outlined"
-              target="_blank"
-              rel="noopener"
-              href={paths.components}
+              onClick={() => navigate(paths.homeTour.root)}
               endIcon={<Iconify icon="eva:arrow-ios-forward-fill" />}
               sx={{ mt: 5, mx: 'auto' }}
             >
@@ -148,12 +148,14 @@ function ScrollableContent() {
               title="Khám phá Đà Nẵng"
               description="Thành phố đáng sống nhất Việt Nam với biển xanh và ẩm thực tuyệt vời."
               color="#FFDD00"
+              destination="đà nẵng"
             />
             <ScrollImage
               sx={{ backgroundImage: `url(${CONFIG.assetsDir}/assets/images/travel/hanoi.jpg)` }}
               title="Trải nghiệm Hà Nội"
               description="Văn hóa cổ kính hòa quyện hiện đại – trái tim của Việt Nam."
               color="#1df0a9ff"
+              destination="hà nội"
             />
           </ScrollRow>
 
@@ -163,12 +165,15 @@ function ScrollableContent() {
               title="Vịnh Hạ Long"
               description="Kỳ quan thiên nhiên thế giới – điểm đến mơ ước của mọi du khách."
               color="#2bf870ff"
+              destination="vịnh hạ long"
             />
             <ScrollImage
               sx={{ backgroundImage: `url(${CONFIG.assetsDir}/assets/images/travel/nhatrang.jpg)` }}
               title="Biển Nha Trang"
               description="Nước trong xanh, cát trắng mịn và nắng vàng rực rỡ quanh năm."
               color="#85b6ffff"
+              destination="nha trang"
+
             />
           </ScrollRow>
         </ScrollContent>
@@ -177,11 +182,11 @@ function ScrollableContent() {
   );
 }
 
-function ScrollImage({ sx, title, description, color }: any) {
+function ScrollImage({ sx, title, destination, description, color }: any) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-20% 0px" });
   const [hovered, setHovered] = useState(false);
-
+  const navigate = useNavigate();
   return (
     <ScrollImageRoot
       ref={ref}
@@ -260,6 +265,7 @@ function ScrollImage({ sx, title, description, color }: any) {
             cursor: "pointer",
             fontSize: "1rem",
           }}
+          onClick={() => navigate(`${paths.homeTour.root}?title=${destination}`)}
         >
           Khám phá ngay
         </m.button>

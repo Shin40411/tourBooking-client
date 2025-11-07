@@ -1,18 +1,32 @@
 import { useParams } from 'src/routes/hooks';
 
 import { CONFIG } from 'src/global-config';
-import { _userList } from 'src/_mock/_user';
 
 import { UserEditView } from 'src/sections/user/view';
+import { fetchUserInfo } from 'src/actions/user';
+import { useEffect, useState } from 'react';
+import { UserItem } from 'src/types/user';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `User edit | Dashboard - ${CONFIG.appName}` };
+const metadata = { title: `Chỉnh sửa tài khoản người dùng | Quản lý - ${CONFIG.appName}` };
 
 export default function Page() {
   const { id = '' } = useParams();
+  const [currentUser, setCurrentUser] = useState<UserItem>();
 
-  const currentUser = _userList.find((user) => user.id === id);
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await fetchUserInfo(Number(id));
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Lỗi khi lấy thông tin user:', error);
+      }
+    };
+
+    if (id) fetchUser();
+  }, [id]);
 
   return (
     <>

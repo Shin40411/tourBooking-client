@@ -7,7 +7,7 @@ import { TourDetailsView } from 'src/sections/tour/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Tour details | Dashboard - ${CONFIG.appName}` };
+const metadata = { title: `Chi tiết tour | Quản lý - ${CONFIG.appName}` };
 
 export default function Page() {
   return (

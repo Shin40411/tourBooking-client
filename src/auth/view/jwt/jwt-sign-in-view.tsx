@@ -115,7 +115,7 @@ export function JwtSignInView() {
 
       <Button
         fullWidth
-        color="inherit"
+        color="primary"
         size="large"
         type="submit"
         variant="contained"
@@ -130,15 +130,15 @@ export function JwtSignInView() {
   return (
     <>
       <FormHead
-        title="Đăng nhập admin"
-        // description={
-        //   <>
-        //     {`Don’t have an account? `}
-        //     <Link component={RouterLink} href={paths.auth.jwt.signUp} variant="subtitle2">
-        //       Get started
-        //     </Link>
-        //   </>
-        // }
+        title="Đăng nhập"
+        description={
+          <>
+            {`Chưa có tài khoản? `}
+            <Link component={RouterLink} href={paths.auth.jwt.signUp} variant="subtitle2">
+              Đăng ký ngay
+            </Link>
+          </>
+        }
         sx={{ textAlign: { xs: 'center', md: 'left' } }}
       />
 

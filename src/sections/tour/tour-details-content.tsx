@@ -5,6 +5,7 @@ import { Lightbox, useLightBox } from 'src/components/lightbox';
 import { Iconify } from 'src/components/iconify';
 import { fDate } from 'src/utils/format-time-vi';
 import { Markdown } from 'src/components/markdown';
+import { fCurrencyVN } from 'src/utils/format-number';
 
 type Props = {
   tour?: TourItem;
@@ -102,13 +103,13 @@ export function TourDetailsContent({ tour }: Props) {
           icon: <Iconify icon="mingcute:location-fill" />,
         },
         {
-          label: 'Số chỗ',
-          value: `${tour.slots ?? 0} chỗ`,
+          label: 'Còn lại',
+          value: `${tour.slots ?? 0} lượt trống`,
           icon: <Iconify icon="solar:users-group-two-rounded-bold" />,
         },
         {
           label: 'Giá',
-          value: `${tour.price?.toLocaleString('vi-VN')}₫`,
+          value: `${fCurrencyVN(tour.price)}`,
           icon: <Iconify icon="solar:wallet-bold" />,
         },
       ].map((item) => (

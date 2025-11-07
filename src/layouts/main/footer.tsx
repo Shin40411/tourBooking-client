@@ -199,10 +199,9 @@ export function HomeFooter({ sx, ...other }: FooterProps) {
               Liên kết nhanh
             </Typography>
             <Stack spacing={1}>
-              <Link href="#" color="inherit" underline="hover">Trang chủ</Link>
-              <Link href="#" color="inherit" underline="hover">Giới thiệu</Link>
-              <Link href="#" color="inherit" underline="hover">Tour nổi bật</Link>
-              <Link href="#" color="inherit" underline="hover">Liên hệ</Link>
+              <Link href="/" color="inherit" underline="hover">Trang chủ</Link>
+              <Link href={paths.homeTour.root} color="inherit" underline="hover">Toàn bộ tour bạn cần tìm</Link>
+              <Link href={paths.contact} color="inherit" underline="hover">Liên hệ</Link>
             </Stack>
           </Box>
 

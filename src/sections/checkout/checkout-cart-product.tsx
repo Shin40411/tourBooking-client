@@ -1,86 +1,132 @@
-import type { ICheckoutItem, CheckoutContextValue } from 'src/types/checkout';
-
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
-import Divider from '@mui/material/Divider';
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 
-import { fCurrency } from 'src/utils/format-number';
-
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
-import { ColorPreview } from 'src/components/color-utils';
 import { NumberInput } from 'src/components/number-input';
+import { ITourCheckoutItem, TourCheckoutContextValue } from 'src/types/booking';
+import { fCurrencyVN } from 'src/utils/format-number';
+import { Button } from '@mui/material';
+import { fDate } from 'src/utils/format-time-vi';
 
 // ----------------------------------------------------------------------
 
 type Props = {
-  row: ICheckoutItem;
-  onDeleteCartItem: CheckoutContextValue['onDeleteCartItem'];
-  onChangeItemQuantity: CheckoutContextValue['onChangeItemQuantity'];
+  row: ITourCheckoutItem;
+  onDelete: TourCheckoutContextValue['onDeleteTour'];
+  onChangeQuantity: TourCheckoutContextValue['onChangeTourQuantity'];
 };
 
-export function CheckoutCartProduct({ row, onDeleteCartItem, onChangeItemQuantity }: Props) {
+export function CheckoutCartProduct({ row, onDelete, onChangeQuantity }: Props) {
+
+  const total = row.subtotal ?? row.price * row.quantity;
+
   return (
-    <TableRow>
-      <TableCell>
-        <Box sx={{ gap: 2, display: 'flex', alignItems: 'center' }}>
-          <Avatar
-            variant="rounded"
-            alt={row.name}
-            src={row.coverUrl}
-            sx={{ width: 64, height: 64 }}
-          />
+    <Stack
+      direction="column"
+      spacing={2}
+      sx={{
+        px: 2,
+        overflow: 'hidden',
+      }}
+    >
+      <Avatar
+        variant="rounded"
+        alt={row.title}
+        src={row.image}
+        sx={{
+          width: '100%',
+          height: 300,
+          objectFit: 'cover',
+          borderRadius: 2,
+        }}
+      />
 
-          <Stack spacing={0.5}>
-            <Typography noWrap variant="subtitle2" sx={{ maxWidth: 240 }}>
-              {row.name}
-            </Typography>
+      <Stack spacing={0.75}>
+        <Typography variant="h6" noWrap>
+          {row.title}
+        </Typography>
 
-            <Box
-              sx={{
-                display: 'flex',
-                typography: 'body2',
-                alignItems: 'center',
-                color: 'text.secondary',
-              }}
-            >
-              size: <Label sx={{ ml: 0.5 }}> {row.size} </Label>
-              <Divider orientation="vertical" sx={{ mx: 1, height: 16 }} />
-              <ColorPreview colors={row.colors} />
-            </Box>
-          </Stack>
-        </Box>
-      </TableCell>
+        <Typography variant="body2" color="text.secondary">
+          Mã tour: <strong>{row.tourCode}</strong>
+        </Typography>
 
-      <TableCell>{fCurrency(row.price)}</TableCell>
+        <Typography variant="body2" color="text.secondary">
+          Thời lượng: {row.duration}
+        </Typography>
 
-      <TableCell>
-        <Box sx={{ width: 100, textAlign: 'right' }}>
-          <NumberInput
-            hideDivider
-            value={row.quantity}
-            onChange={(event, quantity: number) => onChangeItemQuantity(row.id, quantity)}
-            max={row.available}
-          />
+        <Typography variant="body2" color="text.secondary">
+          Ngày khởi hành: {fDate(row.date) ?? '-'}
+        </Typography>
 
-          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
-            available: {row.available}
+        {!!row.locations?.length && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}
+          >
+            Địa điểm:
+            {row.locations.map((loc) => (
+              <Label
+                key={loc.id}
+                color="default"
+                sx={{
+                  ml: 0.5,
+                  fontSize: '0.75rem',
+                  px: 0.75,
+                  py: 0.25,
+                }}
+              >
+                {loc.name}
+              </Label>
+            ))}
           </Typography>
-        </Box>
-      </TableCell>
+        )}
+      </Stack>
 
-      <TableCell align="right">{fCurrency(row.price * row.quantity)}</TableCell>
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ pt: 1, borderTop: (theme) => `1px dashed ${theme.palette.divider}` }}
+      >
+        <Stack spacing={0.5}>
+          <Box display="flex" gap={2}>
+            <Box display="flex" flexDirection="row" gap={1}>
+              <Iconify icon="heroicons:user-group-20-solid" />
+              <Typography variant="body2" color="text.secondary">
+                Hành khách tham gia:
+              </Typography>
+            </Box>
+            <Box width={100}>
+              <NumberInput
+                hideDivider
+                value={row.quantity}
+                min={1}
+                max={row.slots}
+                onChange={(event, quantity) => onChangeQuantity(row.id, quantity)}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Còn lại: {row.slots - row.quantity} chỗ
+              </Typography>
+            </Box>
+          </Box>
 
-      <TableCell align="right" sx={{ px: 1 }}>
-        <IconButton onClick={() => onDeleteCartItem(row.id)}>
-          <Iconify icon="solar:trash-bin-trash-bold" />
-        </IconButton>
-      </TableCell>
-    </TableRow>
+        </Stack>
+
+        <Stack alignItems="flex-end" spacing={1}>
+          <Box>
+            <Button color="error" onClick={() => onDelete(row.id)} startIcon={<Iconify icon="solar:trash-bin-trash-bold" />}>
+              Gỡ bỏ tour này
+            </Button>
+          </Box>
+        </Stack>
+      </Stack>
+    </Stack>
   );
 }

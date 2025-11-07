@@ -17,7 +17,12 @@ const ROOTS = {
 
 export const paths = {
   homeLogin: '/login',
-  homeTour: '/tour',
+  homeTour: {
+    root: '/tour',
+    category: (id: number) => `/tour/category/${id}`,
+    details: (id: string) => `/tour/${id}`,
+    checkOut: '/tour/checkout'
+  },
   comingSoon: '/coming-soon',
   maintenance: '/maintenance',
   pricing: '/pricing',
@@ -163,6 +168,12 @@ export const paths = {
         details: `${ROOTS.DASHBOARD}/job/${MOCK_ID}`,
         edit: `${ROOTS.DASHBOARD}/job/${MOCK_ID}/edit`,
       },
+    },
+    location: {
+      root: `${ROOTS.DASHBOARD}/location`,
+    },
+    category: {
+      root: `${ROOTS.DASHBOARD}/category`,
     },
     tour: {
       root: `${ROOTS.DASHBOARD}/tour`,

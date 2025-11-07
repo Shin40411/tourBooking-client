@@ -4,7 +4,7 @@ import { TourListView } from 'src/sections/tour/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Tour list | Dashboard - ${CONFIG.appName}` };
+const metadata = { title: `Danh sách tour | Quản lý - ${CONFIG.appName}` };
 
 export default function Page() {
   return (

@@ -4,7 +4,7 @@ import { OverviewBookingView } from 'src/sections/overview/booking/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Booking | Dashboard - ${CONFIG.appName}` };
+const metadata = { title: `Tổng quan đơn đặt tour | Quản lý - ${CONFIG.appName}` };
 
 export default function Page() {
   return (

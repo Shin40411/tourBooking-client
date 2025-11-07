@@ -1,7 +1,7 @@
 import { z as zod } from 'zod';
 import { useRouter } from 'src/routes/hooks';
 import { toast } from 'src/components/snackbar';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import {
@@ -15,29 +15,31 @@ import {
   CardHeader,
   Typography,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
   TextField,
-  DialogActions,
+  ToggleButtonGroup,
+  ToggleButton,
+  Autocomplete,
 } from '@mui/material';
-import { Form, Field, schemaHelper } from 'src/components/hook-form';
+import { Form, Field } from 'src/components/hook-form';
 import { paths } from 'src/routes/paths';
 import type { TourDto, TourItem } from 'src/types/tour';
 import { useBoolean } from 'minimal-shared/hooks';
-import { createTour, updateTour, useGetToursExtras, useGetToursIncludes } from 'src/actions/tour';
-import { IDateValue } from 'src/types/common';
+import { createTour, updateTour, uploadImage, useGetToursExtras, useGetToursIncludes } from 'src/actions/tour';
 import { Iconify } from 'src/components/iconify';
 import { useGetLocations } from 'src/actions/location';
 import { useCallback, useMemo, useState } from 'react';
 import { CONFIG } from 'src/global-config';
+import dayjs from 'dayjs';
+import { generateTourCode } from './helper/generate-tour-code';
+import { mutate } from 'swr';
 
 // ----------------------------------------------------------------------
 
 export const NewTourSchema = zod.object({
-  title: zod.string().min(1, { message: 'Vui lòng nhập tiêu đề tour!' }),
+  title: zod.string().min(1, { message: 'Vui lòng nhập tiêu đề tour!' }).max(100, { message: 'Tiêu đề tối đa 100 ký tự!' }),
   price: zod.number().min(1, { message: 'Giá phải lớn hơn 0!' }),
   description: zod.string().min(10, { message: 'Mô tả phải có ít nhất 10 ký tự!' }),
+  duration: zod.string().min(10, { message: 'Thời gian phải có ít nhất 10 ký tự!' }),
   slots: zod.number().min(1, { message: 'Số chỗ phải lớn hơn hoặc bằng 1!' }),
   date: zod.custom<string | number | null>().refine(
     (val) => val !== null && val !== undefined && val !== '',
@@ -51,8 +53,13 @@ export const NewTourSchema = zod.object({
     .refine((file) => !!file, {
       message: 'Ảnh tour là bắt buộc',
     }),
-  includes: zod.array(zod.string().min(1)).min(1, { message: 'Phải có ít nhất 1 dịch vụ bao gồm!' }),
-  extras: zod.array(zod.string().min(1)).optional(),
+  includes: zod
+    .array(zod.string().trim().min(1, { message: 'Không được để trống!' }))
+    .min(1, { message: 'Phải có ít nhất 1 dịch vụ bao gồm!' }),
+  extras: zod
+    .array(zod.string().trim().min(1, { message: 'Không được để trống!' }))
+    .min(1, { message: 'Phải có ít nhất 1 dịch vụ bổ sung!' })
+    .or(zod.literal('').transform(() => [])),
   locationIds: zod.array(zod.string()).min(1, { message: 'Chọn ít nhất 1 địa điểm!' }),
 });
 
@@ -62,20 +69,23 @@ export type NewTourSchemaType = zod.infer<typeof NewTourSchema>;
 
 type Props = {
   currentTour?: TourItem;
+  mutateTour?: () => void;
 };
 
-export function TourNewEditForm({ currentTour }: Props) {
+export function TourNewEditForm({ currentTour, mutateTour }: Props) {
   const router = useRouter();
-  const openIncludeDialog = useBoolean(false);
-  const openExtrasDialog = useBoolean(false);
+  const currentDate = dayjs();
   const openDetails = useBoolean(true);
   const openProperties = useBoolean(true);
-  const [newInclude, setNewInclude] = useState('');
 
   const today = new Date();
   const { toursExtras, toursExtrasLoading, toursExtrasEmpty } = useGetToursExtras();
   const { toursIncludes, toursIncludesEmpty, toursIncludesLoading } = useGetToursIncludes();
-  const { locations, locationsLoading, locationsError } = useGetLocations();
+  const { locations, locationsLoading, locationsError } = useGetLocations({
+    pageNumber: 1,
+    pageSize: 999,
+    enabled: true
+  });
   const locationOptions = useMemo(
     () =>
       locations.map((loc) => ({
@@ -106,6 +116,7 @@ export function TourNewEditForm({ currentTour }: Props) {
   const defaultValues: NewTourSchemaType = {
     title: '',
     price: 0,
+    duration: '',
     description: '',
     slots: 1,
     date: today.toISOString(),
@@ -122,11 +133,12 @@ export function TourNewEditForm({ currentTour }: Props) {
       ? {
         title: currentTour.title,
         price: currentTour.price,
+        duration: currentTour.duration,
         description: currentTour.description,
         slots: currentTour.slots,
         includes: currentTour.includes,
         extras: currentTour.extras || [],
-        image: `${CONFIG.assetsDir}${currentTour.image}`,
+        image: currentTour.image,
         locationIds: currentTour.locations?.map((l) => String(l.id)) || [],
         date: currentTour.date,
       }
@@ -135,19 +147,28 @@ export function TourNewEditForm({ currentTour }: Props) {
 
   const {
     watch,
+    control,
     reset,
     handleSubmit,
     setValue,
     formState: { isSubmitting },
   } = methods;
 
-  const values = watch();
+  const selectedLocationIds = watch("locationIds");
+  const selectedDate = watch("date");
 
-  const handleAddInclude = () => {
-    const trimmed = newInclude.trim();
-    if (!trimmed) return;
-    openIncludeDialog.onFalse();
-  };
+  const selectedLocations = locations.filter((loc) =>
+    selectedLocationIds.includes(String(loc.id))
+  );
+
+  const tourCode = generateTourCode({
+    locations: selectedLocations,
+    date: selectedDate,
+  });
+
+  const [mode, setMode] = useState<'select' | 'manual'>('select');
+
+  const [modeExtras, setModeExtras] = useState<'select' | 'manual'>('select');
 
   const handleRemoveFile = useCallback(() => {
     setValue('image', '', { shouldValidate: true });
@@ -161,8 +182,8 @@ export function TourNewEditForm({ currentTour }: Props) {
         imagePayload = data.image;
       } else if (data.image instanceof File) {
         try {
-          // const res = await uploadImage(data.image, data.Folder);
-          // imagePayload = `${CONFIG.serverUrl}/${res.data.filePath}`;
+          const res = await uploadImage(data.image);
+          imagePayload = `${CONFIG.serverUrl}${res}`;
         } catch (error) {
           console.error("Error uploading image:", error);
           toast.error("Lỗi khi tải ảnh lên. Vui lòng thử lại.");
@@ -171,8 +192,10 @@ export function TourNewEditForm({ currentTour }: Props) {
       }
 
       const basePayload: TourDto = {
+        tourCode: tourCode,
         title: data.title,
-        date: data.date,
+        date: dayjs(data.date).format('YYYY-MM-DD'),
+        duration: data.duration,
         description: data.description,
         image: imagePayload,
         extras: data.extras ?? [],
@@ -182,8 +205,6 @@ export function TourNewEditForm({ currentTour }: Props) {
         slots: data.slots
       };
 
-      console.log(basePayload);
-
       if (!currentTour)
         await createTour(basePayload);
       else
@@ -191,6 +212,12 @@ export function TourNewEditForm({ currentTour }: Props) {
 
       toast.success(currentTour ? 'Cập nhật tour thành công!' : 'Tạo tour mới thành công!');
       reset();
+      await mutate(
+        (key) => typeof key === 'string' && key.includes('/api/tours'),
+        undefined,
+        { revalidate: true }
+      );
+      await mutateTour?.();
       router.push(paths.dashboard.tour.root);
     } catch (error) {
       console.error(error);
@@ -249,7 +276,12 @@ export function TourNewEditForm({ currentTour }: Props) {
 
           <Stack spacing={1.5}>
             <Typography variant="subtitle2">Ngày khởi hành</Typography>
-            <Field.DatePicker name="date" />
+            <Field.DatePicker minDate={currentDate} name="date" />
+          </Stack>
+
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle2">Thời gian</Typography>
+            <Field.Text name="duration" placeholder="3 ngày 2 đêm" />
           </Stack>
         </Stack>
       </Collapse>
@@ -271,7 +303,24 @@ export function TourNewEditForm({ currentTour }: Props) {
         <Stack spacing={3} sx={{ p: 3 }}>
           <Stack spacing={1.5}>
             <Typography variant="subtitle2">Dịch vụ bao gồm</Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
+
+            <ToggleButtonGroup
+              value={mode}
+              exclusive
+              onChange={(_, newMode) => {
+                if (newMode) {
+                  setMode(newMode);
+                  setValue('includes', []);
+                }
+              }}
+              size="small"
+              sx={{ mb: 1, width: 'fit-content' }}
+            >
+              <ToggleButton value="select">Chọn từ danh sách</ToggleButton>
+              <ToggleButton value="manual">Thêm dịch vụ tùy chọn</ToggleButton>
+            </ToggleButtonGroup>
+
+            {mode === 'select' ? (
               <Box sx={{ flexGrow: 1 }}>
                 <Field.MultiSelect
                   variant="outlined"
@@ -290,52 +339,132 @@ export function TourNewEditForm({ currentTour }: Props) {
                   sx={{ width: '100%' }}
                 />
               </Box>
+            ) : (
+              <Controller
+                name="includes"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={[]}
+                    value={field.value || []}
+                    onChange={(_, newValue) => field.onChange(newValue)}
+                    renderTags={(value: readonly string[], getTagProps) =>
+                      value.map((option: string, index: number) => (
+                        <Chip
+                          variant="outlined"
+                          label={option}
+                          {...getTagProps({ index })}
+                        />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        variant="outlined"
+                        label="Nhập dịch vụ (phẩy hoặc Enter để thêm)"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault();
+                            const input = (e.target as HTMLInputElement).value.trim();
+                            if (input) {
+                              field.onChange([...(field.value || []), input]);
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              />
 
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<Iconify icon="eva:plus-fill" />}
-                onClick={openIncludeDialog.onTrue}
-                sx={{ whiteSpace: 'nowrap' }}
-                size='large'
-              >
-                Tạo mới
-              </Button>
-            </Stack>
+            )}
           </Stack>
 
           <Stack spacing={1.5}>
             <Typography variant="subtitle2">Dịch vụ bổ sung</Typography>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <ToggleButtonGroup
+              value={modeExtras}
+              exclusive
+              onChange={(_, newMode) => {
+                if (newMode) {
+                  setModeExtras(newMode);
+                  setValue('extras', []);
+                }
+              }}
+              size="small"
+              sx={{ mb: 1, width: 'fit-content' }}
+            >
+              <ToggleButton value="select">Chọn từ danh sách</ToggleButton>
+              <ToggleButton value="manual">Thêm dịch vụ tùy chọn</ToggleButton>
+            </ToggleButtonGroup>
+
+            {modeExtras === 'select' ? (
               <Box sx={{ flexGrow: 1 }}>
                 <Field.MultiSelect
                   name="extras"
-                  variant='outlined'
+                  variant="outlined"
                   options={tourExtrasOptions}
                   checkbox
                   chip
                   placeholder={
                     toursExtrasLoading
-                      ? "Đang tải..."
+                      ? 'Đang tải...'
                       : toursExtrasEmpty
-                        ? "Không có dữ liệu"
-                        : "Dịch vụ bổ sung"
+                        ? 'Không có dữ liệu'
+                        : 'Chọn dịch vụ bổ sung'
                   }
                   disabled={toursExtrasLoading}
                   sx={{ width: '100%' }}
                 />
               </Box>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<Iconify icon="eva:plus-fill" />}
-                onClick={openExtrasDialog.onTrue}
-                sx={{ whiteSpace: 'nowrap' }}
-                size='large'
-              >
-                Tạo mới
-              </Button>
-            </Stack>
+            ) : (
+              <Controller
+                name="extras"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <Autocomplete<string, true, false, true>
+                    multiple
+                    freeSolo
+                    options={[]}
+                    value={field.value || []}
+                    onChange={(_, newValue) => field.onChange(newValue)}
+                    renderTags={(value: readonly string[], getTagProps) =>
+                      value.map((option: string, index: number) => (
+                        <Chip
+                          variant="outlined"
+                          label={option}
+                          {...getTagProps({ index })}
+                        />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        variant="outlined"
+                        label="Nhập dịch vụ (phẩy hoặc Enter để thêm)"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault();
+                            const input = (e.target as HTMLInputElement).value.trim();
+                            if (input) {
+                              field.onChange([...(field.value || []), input]);
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              />
+            )}
           </Stack>
 
           <Stack spacing={1.5}>
@@ -375,54 +504,6 @@ export function TourNewEditForm({ currentTour }: Props) {
     </Box>
   );
 
-  const renderIncludesAdd = () => (
-    <Dialog open={openIncludeDialog.value} onClose={openIncludeDialog.onFalse} fullWidth maxWidth="xs">
-      <DialogTitle>Thêm dịch vụ bao gồm</DialogTitle>
-      <DialogContent>
-        <TextField
-          fullWidth
-          label="Tên dịch vụ"
-          value={newInclude}
-          onChange={(e) => setNewInclude(e.target.value)}
-          autoFocus
-          margin="normal"
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={openIncludeDialog.onFalse} color="inherit">
-          Hủy
-        </Button>
-        <Button onClick={handleAddInclude} variant="contained" color="primary">
-          Lưu
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-
-  const renderExtrasAdd = () => (
-    <Dialog open={openExtrasDialog.value} onClose={openExtrasDialog.onFalse} fullWidth maxWidth="xs">
-      <DialogTitle>Thêm dịch vụ bổ sung</DialogTitle>
-      <DialogContent>
-        <TextField
-          fullWidth
-          label="Tên dịch vụ"
-          value={newInclude}
-          onChange={(e) => setNewInclude(e.target.value)}
-          autoFocus
-          margin="normal"
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={openExtrasDialog.onFalse} color="inherit">
-          Hủy
-        </Button>
-        <Button onClick={handleAddInclude} variant="contained" color="primary">
-          Lưu
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-
   return (
     <>
       <Form methods={methods} onSubmit={onSubmit}>
@@ -432,8 +513,6 @@ export function TourNewEditForm({ currentTour }: Props) {
           {renderActions()}
         </Stack>
       </Form>
-      {renderIncludesAdd()}
-      {renderExtrasAdd()}
     </>
   );
 }

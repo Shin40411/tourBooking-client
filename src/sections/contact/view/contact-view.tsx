@@ -13,7 +13,7 @@ export function ContactView() {
   return (
     <>
       <ContactHero />
-      <Container component="section" sx={{ py: 10 }}>
+      {/* <Container component="section" sx={{ py: 10 }}>
         <Box
           sx={{
             gap: 10,
@@ -23,7 +23,7 @@ export function ContactView() {
         >
           <ContactForm />
         </Box>
-      </Container>
+      </Container> */}
     </>
   );
 }

@@ -1,7 +1,7 @@
 import type { ITourItem, ITourFilters, TourFilterParams } from 'src/types/tour';
 
 import { orderBy } from 'es-toolkit';
-import { useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 import { useBoolean, useSetState } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
@@ -26,10 +26,14 @@ import { TourFiltersResult } from '../tour-filters-result';
 import { useGetTours } from 'src/actions/tour';
 import { useAuthContext } from 'src/auth/hooks';
 import { RoleBasedGuard } from 'src/auth/guard';
+import { useRouter } from 'src/routes/hooks';
 
 // ----------------------------------------------------------------------
 
 export function TourListView() {
+  const router = useRouter();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const { user } = useAuthContext();
   const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'popular'>('latest');
 
@@ -45,7 +49,22 @@ export function TourListView() {
 
   const { state: currentFilters } = filters;
 
-  const { tours, toursLoading, toursEmpty } = useGetTours(currentFilters);
+  const { tours, toursLoading, toursEmpty, pagination, mutateTours } = useGetTours(currentFilters, page + 1, rowsPerPage);
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  }
+
+  const handleChangeRowsPerPage = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  useEffect(() => {
+    mutateTours();
+  }, [router]);
 
   const canReset =
     (currentFilters.locationIds && currentFilters.locationIds.length > 0) ||
@@ -106,7 +125,15 @@ export function TourListView() {
 
         {notFound && <EmptyContent filled sx={{ py: 10 }} />}
 
-        <TourList tours={tours} />
+        <TourList
+          tours={tours}
+          onMutate={mutateTours}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          pagination={pagination}
+          onChangePage={handleChangePage}
+          onChangeRowsPerPage={handleChangeRowsPerPage}
+        />
       </DashboardContent>
     </RoleBasedGuard>
   );

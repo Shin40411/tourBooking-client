@@ -67,7 +67,6 @@ export function InvoicePDFViewer({ invoice, currentStatus }: InvoicePDFProps) {
 
 Font.register({
   family: 'Roboto',
-  // fonts from public folder
   fonts: [{ src: '/fonts/Roboto-Regular.ttf' }, { src: '/fonts/Roboto-Bold.ttf' }],
 });
 

@@ -13,6 +13,8 @@ import { SplashScreen } from 'src/components/loading-screen';
 const FaqsPage = lazy(() => import('src/pages/faqs'));
 const HomeLoginPage = lazy(() => import('src/pages/home-login/index'));
 const HomeTourPage = lazy(() => import('src/pages/home-tour/list'));
+const CategoryPage = lazy(() => import('src/pages/category/index'));
+const HomeTourDetailPage = lazy(() => import('src/pages/home-tour/details'));
 const ContactPage = lazy(() => import('src/pages/contact-us'));
 const PaymentPage = lazy(() => import('src/pages/payment'));
 const ComingSoonPage = lazy(() => import('src/pages/coming-soon'));
@@ -45,10 +47,22 @@ export const mainRoutes: RouteObject[] = [
         children: [
           {
             path: 'tour',
-            element:
-              <Suspense fallback={<SplashScreen />}>
-                <HomeTourPage />
-              </Suspense>
+            children: [
+              {
+                index: true, element:
+                  <Suspense fallback={<SplashScreen />}>
+                    <HomeTourPage />
+                  </Suspense>,
+              },
+              { path: 'category/:id', element: <CategoryPage /> },
+              { path: ':id', element: <HomeTourDetailPage /> },
+              {
+                path: 'checkout',
+                element: (
+                  <PaymentPage />
+                ),
+              },
+            ],
           },
           { path: 'contact-us', element: <ContactPage /> },
           { path: 'faqs', element: <FaqsPage /> },
@@ -60,14 +74,6 @@ export const mainRoutes: RouteObject[] = [
         element: (
           <SimpleLayout>
             <HomeLoginPage />
-          </SimpleLayout>
-        ),
-      },
-      {
-        path: 'payment',
-        element: (
-          <SimpleLayout>
-            <PaymentPage />
           </SimpleLayout>
         ),
       },

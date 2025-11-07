@@ -33,7 +33,7 @@ export function AuthSplitSection({
   methods,
   layoutQuery = 'md',
   title = 'Manage the job',
-  imgUrl = `${CONFIG.assetsDir}/assets/illustrations/illustration-dashboard.webp`,
+  imgUrl = `${CONFIG.assetsDir}/assets/images/mock/travel/coconutbg.jpg`,
   subtitle = 'More effectively with optimized workflows.',
   ...other
 }: AuthSplitSectionProps) {
@@ -41,12 +41,14 @@ export function AuthSplitSection({
     <Box
       sx={[
         (theme) => ({
-          ...theme.mixins.bgGradient({
-            images: [
-              `linear-gradient(0deg, ${varAlpha(theme.vars.palette.background.defaultChannel, 0.92)}, ${varAlpha(theme.vars.palette.background.defaultChannel, 0.92)})`,
-              `url(${CONFIG.assetsDir}/assets/background/background-3-blur.webp)`,
-            ],
-          }),
+          // ...theme.mixins.bgGradient({
+          //   images: [
+          //     `linear-gradient(0deg, ${varAlpha(theme.vars.palette.background.defaultChannel, 0.92)}, ${varAlpha(theme.vars.palette.background.defaultChannel, 0.92)})`,
+          //     `url(${CONFIG.assetsDir}/assets/background/background-3-blur.webp)`,
+          //   ],
+          // }),
+          backgroundImage: `url(${imgUrl})`,
+          backgroundPosition: 'bottom',
           px: 3,
           pb: 3,
           width: 1,
@@ -77,13 +79,13 @@ export function AuthSplitSection({
           </Typography>
         )}
       </div> */}
-
+      {/* 
       <Box
         component="img"
         alt="Dashboard illustration"
         src={imgUrl}
-        sx={{ width: 1, aspectRatio: '4/3', objectFit: 'cover' }}
-      />
+        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      /> */}
 
       {!!methods?.length && method && (
         <Box component="ul" sx={{ gap: 2, display: 'flex' }}>

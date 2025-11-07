@@ -97,3 +97,20 @@ export type IUserAccountBillingHistory = {
   invoiceNumber: string;
   createdAt: IDateValue;
 };
+
+export type UserItem = {
+  id: number;
+  username: string;
+  password: string;
+  email: string;
+  phone: string;
+  role: string;
+}
+
+export type UserDto = {
+  username?: string;
+  password?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+}

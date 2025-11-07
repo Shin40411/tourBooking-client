@@ -50,13 +50,25 @@ export const navData: NavSectionProps['data'] = [
       {
         title: 'Tổng quan',
         path: paths.dashboard.root,
-        icon: ICONS.dashboard,
-        allowedRoles: ['ROLE_ADMIN'],
+        icon: ICONS.calendar,
+        allowedRoles: ['ROLE_ADMIN', 'ROLE_USER'],
       },
       {
         title: 'Quản lý tour',
         path: paths.dashboard.tour.root,
+        icon: ICONS.booking,
+        allowedRoles: ['ROLE_ADMIN'],
+      },
+      {
+        title: 'Quản lý điểm đến',
+        path: paths.dashboard.location.root,
         icon: ICONS.tour,
+        allowedRoles: ['ROLE_ADMIN'],
+      },
+      {
+        title: 'Quản lý danh mục',
+        path: paths.dashboard.category.root,
+        icon: ICONS.blog,
         allowedRoles: ['ROLE_ADMIN'],
       },
       {

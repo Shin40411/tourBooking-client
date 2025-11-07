@@ -44,15 +44,15 @@ const AccountNotificationsPage = lazy(
 const AccountChangePasswordPage = lazy(
   () => import('src/pages/dashboard/user/account/change-password')
 );
-// Blog
-// Job
 // Tour
 const TourDetailsPage = lazy(() => import('src/pages/dashboard/tour/details'));
 const TourListPage = lazy(() => import('src/pages/dashboard/tour/list'));
 const TourCreatePage = lazy(() => import('src/pages/dashboard/tour/new'));
 const TourEditPage = lazy(() => import('src/pages/dashboard/tour/edit'));
-// File manager
-// App
+// Location
+const LocationListPage = lazy(() => import('src/pages/dashboard/location/list'));
+// Category
+const CategoryListPage = lazy(() => import('src/pages/dashboard/category/list'));
 // Test render page by role
 const PermissionDeniedPage = lazy(() => import('src/pages/dashboard/permission'));
 // Blank page
@@ -121,6 +121,20 @@ export const dashboardRoutes: RouteObject[] = [
           { path: ':id', element: <TourDetailsPage /> },
           { path: 'new', element: <TourCreatePage /> },
           { path: ':id/edit', element: <TourEditPage /> },
+        ],
+      },
+      {
+        path: 'location',
+        children: [
+          { index: true, element: <LocationListPage /> },
+          { path: 'list', element: <LocationListPage /> },
+        ],
+      },
+      {
+        path: 'category',
+        children: [
+          { index: true, element: <CategoryListPage /> },
+          { path: 'list', element: <CategoryListPage /> },
         ],
       },
       { path: 'permission', element: <PermissionDeniedPage /> },

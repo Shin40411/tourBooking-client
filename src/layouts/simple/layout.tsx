@@ -26,6 +26,10 @@ import { navData as mainNavData } from '../nav-config-main';
 import { useBoolean } from 'minimal-shared/hooks';
 import { NavMobile } from '../main/nav/mobile';
 import { usePathname } from 'src/routes/hooks';
+import { useGetLocations } from 'src/actions/location';
+import { Iconify } from 'src/components/iconify';
+import { paths } from 'src/routes/paths';
+import { useMemo } from 'react';
 
 // ----------------------------------------------------------------------
 
@@ -51,8 +55,34 @@ export function SimpleLayout({
   slotProps,
   layoutQuery = 'md',
 }: SimpleLayoutProps) {
-  const navData = slotProps?.nav?.data ?? mainNavData;
+  const { locations, locationsLoading } = useGetLocations({ pageNumber: 1, pageSize: 999, enabled: true });
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
+
+  const navData = useMemo(() => {
+    const destinationChildren = [
+      {
+        subheader: '',
+        items: locations.map((item) => ({
+          title: item.name,
+          path: `/tour?locations=${item.id}`,
+        })),
+      },
+    ];
+
+    return [
+      {
+        title: 'Điểm đến',
+        path: '/destinations',
+        icon: <Iconify icon="solar:map-point-bold-duotone" width={22} />,
+        children: destinationChildren,
+      },
+      {
+        title: 'Liên hệ',
+        icon: <Iconify icon="solar:notebook-bold-duotone" width={22} />,
+        path: paths.contact,
+      },
+    ];
+  }, [locations]);
 
   const renderHeader = () => {
     const headerSlots: HeaderSectionProps['slots'] = {

@@ -1,27 +1,32 @@
 import { paths } from 'src/routes/paths';
 
-import { DashboardContent } from 'src/layouts/dashboard';
-
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 
 import { UserNewEditForm } from '../user-new-edit-form';
+import { RoleBasedGuard } from 'src/auth/guard';
+import { useAuthContext } from 'src/auth/hooks';
+import { DashboardContent } from 'src/layouts/dashboard';
 
 // ----------------------------------------------------------------------
 
 export function UserCreateView() {
-  return (
-    <DashboardContent>
-      <CustomBreadcrumbs
-        heading="Create a new user"
-        links={[
-          { name: 'Dashboard', href: paths.dashboard.root },
-          { name: 'User', href: paths.dashboard.user.root },
-          { name: 'New user' },
-        ]}
-        sx={{ mb: { xs: 3, md: 5 } }}
-      />
+  const { user } = useAuthContext();
 
-      <UserNewEditForm />
-    </DashboardContent>
+  return (
+    <RoleBasedGuard hasContent currentRole={user?.role} allowedRoles={['ROLE_ADMIN']} sx={{ py: 10 }}>
+      <DashboardContent>
+        <CustomBreadcrumbs
+          heading="Đang tạo tài khoản mới..."
+          links={[
+            { name: 'Tổng quan', href: paths.dashboard.root },
+            { name: 'Tài khoản người dùng', href: paths.dashboard.user.root },
+            { name: 'Tạo mới' },
+          ]}
+          sx={{ mb: { xs: 3, md: 5 } }}
+        />
+
+        <UserNewEditForm />
+      </DashboardContent>
+    </RoleBasedGuard>
   );
 }

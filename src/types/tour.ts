@@ -71,8 +71,10 @@ export type TourFilterParams = {
 
 export type TourItem = {
   id: number;
+  tourCode: string;
   title: string;
   price: number;
+  duration: string;
   description: string;
   slots: number;
   date: IDateValue;
@@ -83,8 +85,10 @@ export type TourItem = {
 }
 
 export type TourDto = {
+  tourCode: string;
   title: string;
   price: number;
+  duration: string;
   description: string;
   slots: number;
   date: IDateValue;

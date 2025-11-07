@@ -13,8 +13,8 @@ export type SignInParams = {
 export type SignUpParams = {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  username: string;
+  phone: string;
 };
 
 /** **************************************
@@ -45,26 +45,21 @@ export const signInWithPassword = async ({ username, password }: SignInParams): 
 export const signUp = async ({
   email,
   password,
-  firstName,
-  lastName,
+  username,
+  phone,
 }: SignUpParams): Promise<void> => {
   const params = {
     email,
     password,
-    firstName,
-    lastName,
+    username,
+    phone,
   };
 
   try {
     const res = await axios.post(endpoints.auth.signUp, params);
 
-    const { accessToken } = res.data;
-
-    if (!accessToken) {
-      throw new Error('Access token not found in response');
-    }
-
-    sessionStorage.setItem(JWT_STORAGE_KEY, accessToken);
+    const dt = res.data;
+    return dt;
   } catch (error) {
     console.error('Error during sign up:', error);
     throw error;

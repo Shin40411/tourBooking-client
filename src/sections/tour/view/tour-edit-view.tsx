@@ -17,9 +17,10 @@ import { useAuthContext } from 'src/auth/hooks';
 
 type Props = {
   tour?: TourItem;
+  mutateTour: () => void;
 };
 
-export function TourEditView({ tour }: Props) {
+export function TourEditView({ tour, mutateTour }: Props) {
   const { user } = useAuthContext();
   return (
     <RoleBasedGuard hasContent currentRole={user?.role} allowedRoles={['ROLE_ADMIN']} sx={{ py: 10 }}>
@@ -43,7 +44,7 @@ export function TourEditView({ tour }: Props) {
           }
         />
 
-        <TourNewEditForm currentTour={tour} />
+        <TourNewEditForm currentTour={tour} mutateTour={mutateTour} />
       </DashboardContent>
     </RoleBasedGuard>
   );

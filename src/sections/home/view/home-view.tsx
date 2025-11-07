@@ -6,10 +6,6 @@ import { ScrollProgress, useScrollProgress } from 'src/components/animate/scroll
 import { HomeHero } from '../home-hero';
 import { HomePricing } from '../home-pricing';
 import { HomeHugePackElements } from '../home-hugepack-elements';
-import { Box } from '@mui/material';
-import HomeFilter from '../home-filter';
-import { useState } from 'react';
-import { HomeFAQs } from '../home-faqs';
 
 // ----------------------------------------------------------------------
 
@@ -34,7 +30,6 @@ export function HomeView() {
         <HomeHugePackElements />
 
         <HomePricing />
-        {/* <HomeFAQs /> */}
       </Stack>
     </>
   );

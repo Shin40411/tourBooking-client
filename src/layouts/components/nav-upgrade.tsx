@@ -47,7 +47,7 @@ export function NavUpgrade({ sx, ...other }: BoxProps) {
               borderBottomLeftRadius: 2,
             }}
           >
-            Đang hoạt động
+            {user && user.role === "ROLE_ADMIN" ? "Quản trị viên" : "Khách hàng"}
           </Label>
         </Box>
 

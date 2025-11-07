@@ -3,25 +3,20 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 
 import { CheckoutCart } from '../checkout-cart';
-import { useCheckoutContext } from '../context';
+import { useCheckoutContext, useTourCheckoutContext } from '../context';
 import { CheckoutSteps } from '../checkout-steps';
 import { CheckoutPayment } from '../checkout-payment';
 import { CheckoutOrderComplete } from '../checkout-order-complete';
 import { CheckoutBillingAddress } from '../checkout-billing-address';
-
 // ----------------------------------------------------------------------
 
 export function CheckoutView() {
-  const { steps, activeStep, completed, onResetCart } = useCheckoutContext();
+  const { steps, activeStep, completed } = useTourCheckoutContext();
 
   return (
-    <Container sx={{ mb: 10 }}>
-      <Typography variant="h4" sx={{ my: { xs: 3, md: 5 } }}>
-        Checkout
-      </Typography>
-
+    <Container maxWidth="xl" sx={{ minHeight: '100vh', mb: 10 }}>
       <Grid container justifyContent={completed ? 'center' : 'flex-start'}>
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={12} pt={10}>
           <CheckoutSteps steps={steps} activeStep={activeStep ?? 0} />
         </Grid>
       </Grid>
@@ -32,10 +27,6 @@ export function CheckoutView() {
         {activeStep === 1 && <CheckoutBillingAddress />}
 
         {activeStep === 2 && <CheckoutPayment />}
-
-        {completed && (
-          <CheckoutOrderComplete open onResetCart={onResetCart} onDownloadPDF={() => {}} />
-        )}
       </>
     </Container>
   );

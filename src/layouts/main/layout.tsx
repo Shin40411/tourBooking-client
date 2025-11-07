@@ -7,7 +7,7 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 
 import { paths } from 'src/routes/paths';
-import { usePathname } from 'src/routes/hooks';
+import { usePathname, useRouter } from 'src/routes/hooks';
 
 import { Logo } from 'src/components/logo';
 
@@ -28,9 +28,15 @@ import type { MainSectionProps } from '../core/main-section';
 import type { HeaderSectionProps } from '../core/header-section';
 import type { LayoutSectionProps } from '../core/layout-section';
 import { useGetLocations } from 'src/actions/location';
-import { useMemo } from 'react';
+import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Iconify } from 'src/components/iconify';
 import { kebabCase } from 'es-toolkit';
+import { useAuthContext } from 'src/auth/hooks';
+import { RouterLink } from 'src/routes/components';
+import { IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
+import { JWT_USER_INFO, signOut } from 'src/auth/context/jwt';
+import { toast } from 'sonner';
+import { useGetCategories } from 'src/actions/category';
 
 // ----------------------------------------------------------------------
 
@@ -55,31 +61,58 @@ export function MainLayout({
   slotProps,
   layoutQuery = 'md',
 }: MainLayoutProps) {
+  const { user, checkUserSession } = useAuthContext();
   const pathname = usePathname();
-  const { locations, locationsLoading } = useGetLocations();
+  const { categories, pagination, categoriesLoading, categoriesEmpty, mutation } = useGetCategories({
+    pageNumber: 1,
+    pageSize: 999,
+    enabled: true,
+  });
+
   const { value: open, onFalse: onClose, onTrue: onOpen } = useBoolean();
 
   const isHomePage = pathname === '/';
+  const router = useRouter();
 
   // const navData = slotProps?.nav?.data ?? mainNavData;
 
-  const navData = useMemo(() => {
-    const destinationChildren = [
-      {
-        subheader: '',
-        items: locations.map((item) => ({
-          title: item.name,
-          path: `/tour?locations=${item.id}`,
-        })),
-      },
-    ];
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const openAccountPage = Boolean(anchorEl);
 
+  const handleOpen = (event: MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut();
+      await checkUserSession?.();
+      sessionStorage.removeItem(JWT_USER_INFO);
+      onClose?.();
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      toast.error('Unable to logout!');
+    }
+  }, [checkUserSession, onClose, router]);
+
+  const navData = useMemo(() => {
     return [
       {
         title: 'Điểm đến',
         path: '/destinations',
         icon: <Iconify icon="solar:map-point-bold-duotone" width={22} />,
-        children: destinationChildren,
+        children: categories.map((item) => ({
+          subheader: item.name,
+          items: item.locations.map((l) => ({
+            title: l.name,
+            path: paths.homeTour.category(l.id),
+          })),
+        })),
       },
       {
         title: 'Liên hệ',
@@ -87,7 +120,7 @@ export function MainLayout({
         path: paths.contact,
       },
     ];
-  }, [locations]);
+  }, [categories]);
 
   const renderHeader = () => {
     const headerSlots: HeaderSectionProps['slots'] = {
@@ -124,14 +157,44 @@ export function MainLayout({
               [theme.breakpoints.up(layoutQuery)]: { mr: 2.5, display: 'flex' },
             })}
           />
+          {!user ?
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
+              <SignInButton color='primary' />
+            </Box>
+            :
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
+              <IconButton
+                onClick={handleOpen}
+                title="Tài khoản"
+                sx={{ bgcolor: '#00A76F', '&:hover': { bgcolor: '#008a5d' } }}
+              >
+                <Iconify icon="hugeicons:manager" color="#fff" />
+              </IconButton>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 } }}>
-            {/** @slot Settings button */}
-            {/* <SettingsButton /> */}
+              <Menu
+                anchorEl={anchorEl}
+                open={openAccountPage}
+                onClose={handleClose}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                PaperProps={{
+                  sx: { borderRadius: 2, mt: 1 },
+                }}
+              >
+                <MenuItem
+                  component={RouterLink}
+                  href={paths.dashboard.root}
+                  onClick={handleClose}
+                >
+                  <ListItemText primary="Quản lý đơn đặt" />
+                </MenuItem>
 
-            {/** @slot Sign in button */}
-            <SignInButton color='primary' />
-          </Box>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemText primary="Đăng xuất" />
+                </MenuItem>
+              </Menu>
+            </Box>
+          }
         </>
       ),
     };

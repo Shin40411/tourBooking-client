@@ -1,7 +1,7 @@
 import type { TableHeadCellProps } from 'src/components/table';
 import type { IUserItem, IUserTableFilters } from 'src/types/user';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, ChangeEvent, useMemo, SyntheticEvent } from 'react';
 import { varAlpha } from 'minimal-shared/utils';
 import { useBoolean, useSetState } from 'minimal-shared/hooks';
 
@@ -44,17 +44,18 @@ import { UserTableToolbar } from '../user-table-toolbar';
 import { UserTableFiltersResult } from '../user-table-filters-result';
 import { RoleBasedGuard } from 'src/auth/guard';
 import { useAuthContext } from 'src/auth/hooks';
+import { deleteUser, useGetUsers } from 'src/actions/user';
+import { TablePagination } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
 const STATUS_OPTIONS = [{ value: 'all', label: 'All' }, ...USER_STATUS_OPTIONS];
 
 const TABLE_HEAD: TableHeadCellProps[] = [
-  { id: 'name', label: 'Name' },
-  { id: 'phoneNumber', label: 'Phone number', width: 180 },
-  { id: 'company', label: 'Company', width: 220 },
-  { id: 'role', label: 'Role', width: 180 },
-  { id: 'status', label: 'Status', width: 100 },
+  { id: 'index', label: '#', width: 80, align: "center" },
+  { id: 'username', label: 'Tên tài khoản' },
+  { id: 'email', label: 'Địa chỉ email' },
+  { id: 'phone', label: 'Số điện thoại' },
   { id: '', width: 88 },
 ];
 
@@ -63,92 +64,58 @@ const TABLE_HEAD: TableHeadCellProps[] = [
 export function UserListView() {
   const table = useTable();
   const { user } = useAuthContext();
-  const confirmDialog = useBoolean();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const [tableData, setTableData] = useState<IUserItem[]>(_userList);
+  const [roleTab, setRoleTab] = useState<'ROLE_ADMIN' | 'ROLE_USER'>('ROLE_USER');
 
-  const filters = useSetState<IUserTableFilters>({ name: '', role: [], status: 'all' });
-  const { state: currentFilters, setState: updateFilters } = filters;
+  const handleChangeTab = (_: SyntheticEvent, newValue: 'ROLE_ADMIN' | 'ROLE_USER') => {
+    setRoleTab(newValue);
+    setPage(0);
+  };
 
-  const dataFiltered = applyFilter({
-    inputData: tableData,
-    comparator: getComparator(table.order, table.orderBy),
-    filters: currentFilters,
+  const { users: CurrentList, usersEmpty, pagination, usersLoading, mutation } = useGetUsers({
+    pageNumber: page + 1,
+    pageSize: rowsPerPage,
+    enabled: !!roleTab,
+    role: roleTab
   });
 
-  const dataInPage = rowInPage(dataFiltered, table.page, table.rowsPerPage);
-
-  const canReset =
-    !!currentFilters.name || currentFilters.role.length > 0 || currentFilters.status !== 'all';
-
-  const notFound = (!dataFiltered.length && canReset) || !dataFiltered.length;
-
   const handleDeleteRow = useCallback(
-    (id: string) => {
-      const deleteRow = tableData.filter((row) => row.id !== id);
-
-      toast.success('Delete success!');
-
-      setTableData(deleteRow);
-
-      table.onUpdatePageDeleteRow(dataInPage.length);
-    },
-    [dataInPage.length, table, tableData]
-  );
-
-  const handleDeleteRows = useCallback(() => {
-    const deleteRows = tableData.filter((row) => !table.selected.includes(row.id));
-
-    toast.success('Delete success!');
-
-    setTableData(deleteRows);
-
-    table.onUpdatePageDeleteRows(dataInPage.length, dataFiltered.length);
-  }, [dataFiltered.length, dataInPage.length, table, tableData]);
-
-  const handleFilterStatus = useCallback(
-    (event: React.SyntheticEvent, newValue: string) => {
-      table.onResetPage();
-      updateFilters({ status: newValue });
-    },
-    [updateFilters, table]
-  );
-
-  const renderConfirmDialog = () => (
-    <ConfirmDialog
-      open={confirmDialog.value}
-      onClose={confirmDialog.onFalse}
-      title="Delete"
-      content={
-        <>
-          Are you sure want to delete <strong> {table.selected.length} </strong> items?
-        </>
+    async (id: number) => {
+      try {
+        await deleteUser(id);
+        toast.success('Xóa người dùng thành công!');
+        mutation();
+      } catch (error: any) {
+        console.error(error);
+        toast.error(error || "Đã có lỗi xảy ra!");
       }
-      action={
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => {
-            handleDeleteRows();
-            confirmDialog.onFalse();
-          }}
-        >
-          Delete
-        </Button>
-      }
-    />
+    },
+    []
   );
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  }
+
+  const handleChangeRowsPerPage = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   return (
     <>
       <RoleBasedGuard hasContent currentRole={user?.role} allowedRoles={['ROLE_ADMIN']} sx={{ py: 10 }}>
         <DashboardContent>
           <CustomBreadcrumbs
-            heading="List"
+            heading="Danh sách tài khoản"
             links={[
-              { name: 'Dashboard', href: paths.dashboard.root },
-              { name: 'User', href: paths.dashboard.user.root },
-              { name: 'List' },
+              { name: 'Tổng quan', href: paths.dashboard.root },
+              { name: 'Tài khoản người dùng', href: paths.dashboard.user.root },
+              { name: 'Danh sách' },
             ]}
             action={
               <Button
@@ -157,181 +124,98 @@ export function UserListView() {
                 variant="contained"
                 startIcon={<Iconify icon="mingcute:add-line" />}
               >
-                New user
+                Tạo mới
               </Button>
             }
             sx={{ mb: { xs: 3, md: 5 } }}
           />
 
-          <Card>
+          <Card
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             <Tabs
-              value={currentFilters.status}
-              onChange={handleFilterStatus}
-              sx={[
-                (theme) => ({
-                  px: 2.5,
-                  boxShadow: `inset 0 -2px 0 0 ${varAlpha(theme.vars.palette.grey['500Channel'], 0.08)}`,
-                }),
-              ]}
+              value={roleTab}
+              onChange={handleChangeTab}
+              sx={{ borderBottom: 1, borderColor: 'divider', p: 2 }}
             >
-              {STATUS_OPTIONS.map((tab) => (
-                <Tab
-                  key={tab.value}
-                  iconPosition="end"
-                  value={tab.value}
-                  label={tab.label}
-                  icon={
-                    <Label
-                      variant={
-                        ((tab.value === 'all' || tab.value === currentFilters.status) && 'filled') ||
-                        'soft'
-                      }
-                      color={
-                        (tab.value === 'active' && 'success') ||
-                        (tab.value === 'pending' && 'warning') ||
-                        (tab.value === 'banned' && 'error') ||
-                        'default'
-                      }
-                    >
-                      {['active', 'pending', 'banned', 'rejected'].includes(tab.value)
-                        ? tableData.filter((user) => user.status === tab.value).length
-                        : tableData.length}
-                    </Label>
-                  }
-                />
-              ))}
+              <Tab value="ROLE_USER"
+                label={
+                  <Label variant='inverted' startIcon={<Iconify icon="mdi:user" />}>Người dùng</Label>
+                } />
+              <Tab value="ROLE_ADMIN" label={
+                <Label variant='inverted' startIcon={<Iconify icon="eos-icons:admin" />}>Quản trị viên</Label>
+              } />
             </Tabs>
 
-            <UserTableToolbar
-              filters={filters}
-              onResetPage={table.onResetPage}
-              options={{ roles: _roles }}
-            />
-
-            {canReset && (
-              <UserTableFiltersResult
-                filters={filters}
-                totalResults={dataFiltered.length}
-                onResetPage={table.onResetPage}
-                sx={{ p: 2.5, pt: 0 }}
-              />
-            )}
-
-            <Box sx={{ position: 'relative' }}>
-              <TableSelectedAction
-                dense={table.dense}
-                numSelected={table.selected.length}
-                rowCount={dataFiltered.length}
-                onSelectAllRows={(checked) =>
-                  table.onSelectAllRows(
-                    checked,
-                    dataFiltered.map((row) => row.id)
-                  )
-                }
-                action={
-                  <Tooltip title="Delete">
-                    <IconButton color="primary" onClick={confirmDialog.onTrue}>
-                      <Iconify icon="solar:trash-bin-trash-bold" />
-                    </IconButton>
-                  </Tooltip>
-                }
-              />
-
+            <Box sx={{ position: 'relative', flex: 1 }}>
               <Scrollbar>
                 <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
                   <TableHeadCustom
                     order={table.order}
                     orderBy={table.orderBy}
                     headCells={TABLE_HEAD}
-                    rowCount={dataFiltered.length}
+                    rowCount={pagination.totalRecord}
                     numSelected={table.selected.length}
                     onSort={table.onSort}
-                    onSelectAllRows={(checked) =>
-                      table.onSelectAllRows(
-                        checked,
-                        dataFiltered.map((row) => row.id)
-                      )
-                    }
                   />
 
                   <TableBody>
-                    {dataFiltered
-                      .slice(
-                        table.page * table.rowsPerPage,
-                        table.page * table.rowsPerPage + table.rowsPerPage
-                      )
-                      .map((row) => (
-                        <UserTableRow
-                          key={row.id}
-                          row={row}
-                          selected={table.selected.includes(row.id)}
-                          onSelectRow={() => table.onSelectRow(row.id)}
-                          onDeleteRow={() => handleDeleteRow(row.id)}
-                          editHref={paths.dashboard.user.edit(row.id)}
-                        />
-                      ))}
+                    {usersLoading ? (
+                      <TableEmptyRows
+                        height={table.dense ? 56 : 76}
+                        emptyRows={table.rowsPerPage}
+                      />
+                    ) : (
+                      CurrentList
+                        .map((row, index) => (
+                          <UserTableRow
+                            key={row.id}
+                            index={table.page * table.rowsPerPage + index + 1}
+                            row={row}
+                            onDeleteRow={() => handleDeleteRow(row.id)}
+                            editHref={paths.dashboard.user.edit(String(row.id))}
+                          />
+                        ))
+                    )}
 
                     <TableEmptyRows
                       height={table.dense ? 56 : 56 + 20}
-                      emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
+                      emptyRows={emptyRows(
+                        table.page,
+                        table.rowsPerPage,
+                        pagination.totalRecord
+                      )}
                     />
 
-                    <TableNoData notFound={notFound} />
+                    <TableNoData notFound={usersEmpty} />
                   </TableBody>
                 </Table>
               </Scrollbar>
             </Box>
 
-            <TablePaginationCustom
-              page={table.page}
-              dense={table.dense}
-              count={dataFiltered.length}
-              rowsPerPage={table.rowsPerPage}
-              onPageChange={table.onChangePage}
-              onChangeDense={table.onChangeDense}
-              onRowsPerPageChange={table.onChangeRowsPerPage}
+            <TablePagination
+              component="div"
+              count={pagination.totalRecord}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 20]}
+              labelRowsPerPage="Số dòng mỗi trang:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} trên ${count !== -1 ? count : `nhiều hơn ${to}`}`
+              }
+              sx={{
+                borderTop: '1px solid #e0e0e0',
+                mt: 'auto',
+              }}
             />
           </Card>
         </DashboardContent>
-
-        {renderConfirmDialog()}
       </RoleBasedGuard>
     </>
   );
-}
-
-// ----------------------------------------------------------------------
-
-type ApplyFilterProps = {
-  inputData: IUserItem[];
-  filters: IUserTableFilters;
-  comparator: (a: any, b: any) => number;
-};
-
-function applyFilter({ inputData, comparator, filters }: ApplyFilterProps) {
-  const { name, status, role } = filters;
-
-  const stabilizedThis = inputData.map((el, index) => [el, index] as const);
-
-  stabilizedThis.sort((a, b) => {
-    const order = comparator(a[0], b[0]);
-    if (order !== 0) return order;
-    return a[1] - b[1];
-  });
-
-  inputData = stabilizedThis.map((el) => el[0]);
-
-  if (name) {
-    inputData = inputData.filter((user) => user.name.toLowerCase().includes(name.toLowerCase()));
-  }
-
-  if (status !== 'all') {
-    inputData = inputData.filter((user) => user.status === status);
-  }
-
-  if (role.length) {
-    inputData = inputData.filter((user) => role.includes(user.role));
-  }
-
-  return inputData;
 }

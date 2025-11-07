@@ -296,6 +296,7 @@ export const _countryNames = [
   'Denmark',
   'Finland',
   'Poland',
+  'Việt Nam'
 ];
 
 // ----------------------------------------------------------------------

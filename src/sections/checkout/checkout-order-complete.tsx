@@ -15,15 +15,19 @@ import { RouterLink } from 'src/routes/components';
 import { OrderCompleteIllustration } from 'src/assets/illustrations';
 
 import { Iconify } from 'src/components/iconify';
+import { Dispatch, SetStateAction } from 'react';
+import { Image } from 'src/components/image';
+import { CONFIG } from 'src/global-config';
 
 // ----------------------------------------------------------------------
 
 type Props = DialogProps & {
   onDownloadPDF: () => void;
-  onResetCart: CheckoutContextValue['onResetCart'];
+  tourCode: string;
+  resetTourCode: Dispatch<SetStateAction<string>>;
 };
 
-export function CheckoutOrderComplete({ onResetCart, onDownloadPDF, slotProps, ...other }: Props) {
+export function CheckoutOrderComplete({ onDownloadPDF, tourCode, resetTourCode, slotProps, ...other }: Props) {
   const dialogPaperSx = (slotProps?.paper as PaperProps)?.sx;
 
   return (
@@ -58,20 +62,22 @@ export function CheckoutOrderComplete({ onResetCart, onDownloadPDF, slotProps, .
           flexDirection: 'column',
         }}
       >
-        <Typography variant="h4">Thank you for your purchase!</Typography>
-
-        <OrderCompleteIllustration />
+        <Image src={`${CONFIG.assetsDir}/assets/illustrations/payment-success.png`} />
+        <Typography variant="h4">Đặt tour thành công!</Typography>
 
         <Typography>
-          Thanks for placing order
+          Cảm ơn bạn đã đặt tour cùng chúng tôi.
           <br />
           <br />
-          <Link>01dc1370-3df6-11eb-b378-0242ac130002</Link>
+          Mã tour đã đặt của bạn là:{' '}
+          <Link>{tourCode}</Link>
           <br />
           <br />
-          We will send you a notification within 5 days when it ships.
-          <br /> If you have any question or queries then fell to get in contact us. <br />
-          All the best,
+          Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất để xác nhận và gửi thông tin chi tiết.
+          <br />
+          Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua email hoặc số điện thoại hỗ trợ.
+          <br />
+          Trân trọng,
         </Typography>
 
         <Divider sx={{ width: 1, borderStyle: 'dashed' }} />
@@ -85,24 +91,22 @@ export function CheckoutOrderComplete({ onResetCart, onDownloadPDF, slotProps, .
           }}
         >
           <Button
-            component={RouterLink}
-            href={paths.product.root}
-            size="large"
-            color="inherit"
-            variant="outlined"
-            onClick={onResetCart}
-            startIcon={<Iconify icon="eva:arrow-ios-back-fill" />}
-          >
-            Continue shopping
-          </Button>
-
-          <Button
             size="large"
             variant="contained"
             startIcon={<Iconify icon="eva:cloud-download-fill" />}
             onClick={onDownloadPDF}
           >
-            Download as PDF
+            Xem hóa đơn (PDF)
+          </Button>
+
+          <Button
+            size="large"
+            color="inherit"
+            variant="outlined"
+            startIcon={<Iconify icon="eva:arrow-back-fill" />}
+            onClick={() => { window.location.href = '/'; resetTourCode('') }}
+          >
+            Quay về trang chủ
           </Button>
         </Box>
       </Box>

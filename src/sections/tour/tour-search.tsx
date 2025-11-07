@@ -175,11 +175,11 @@ function useSearchData(searchQuery: string) {
 
     setSearchLoading(true);
     try {
-      const { data } = await axios.get(`${CONFIG.serverUrl}/tours`, {
-        params: { title: searchQuery },
+      const { data } = await axios.get(`${CONFIG.serverUrl}/api/tours`, {
+        params: { page: 1, size: 999, title: searchQuery },
       });
 
-      setSearchResults(Array.isArray(data) ? data : data?.data ?? []);
+      setSearchResults(Array.isArray(data) ? data : data?.data.items ?? []);
 
     } catch (error) {
       console.error('Search failed:', error);

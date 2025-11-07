@@ -1,83 +1,68 @@
-import type { IUserItem } from 'src/types/user';
+import type { UserDto, UserItem } from 'src/types/user';
 
 import { z as zod } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
-import { isValidPhoneNumber } from 'react-phone-number-input/input';
+import { useForm } from 'react-hook-form';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import Switch from '@mui/material/Switch';
-import Typography from '@mui/material/Typography';
-import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
-import { fData } from 'src/utils/format-number';
 
-import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
-import { Form, Field, schemaHelper } from 'src/components/hook-form';
+import { Form, Field } from 'src/components/hook-form';
+import { IconButton, InputAdornment, MenuItem } from '@mui/material';
+import { Iconify } from 'src/components/iconify';
+import { useBoolean } from 'minimal-shared/hooks';
+import { createUser, updateUser } from 'src/actions/user';
+import { mutate } from 'swr';
 
 // ----------------------------------------------------------------------
 
-export type NewUserSchemaType = zod.infer<typeof NewUserSchema>;
 
-export const NewUserSchema = zod.object({
-  avatarUrl: schemaHelper.file({ message: 'Avatar is required!' }),
-  name: zod.string().min(1, { message: 'Name is required!' }),
-  email: zod
-    .string()
-    .min(1, { message: 'Email is required!' })
-    .email({ message: 'Email must be a valid email address!' }),
-  phoneNumber: schemaHelper.phoneNumber({ isValid: isValidPhoneNumber }),
-  country: schemaHelper.nullableInput(zod.string().min(1, { message: 'Country is required!' }), {
-    // message for null value
-    message: 'Country is required!',
-  }),
-  address: zod.string().min(1, { message: 'Address is required!' }),
-  company: zod.string().min(1, { message: 'Company is required!' }),
-  state: zod.string().min(1, { message: 'State is required!' }),
-  city: zod.string().min(1, { message: 'City is required!' }),
-  role: zod.string().min(1, { message: 'Role is required!' }),
-  zipCode: zod.string().min(1, { message: 'Zip code is required!' }),
-  // Not required
-  status: zod.string(),
-  isVerified: zod.boolean(),
-});
+export const NewUserSchema = (hasCurrentUser: boolean) =>
+  zod.object({
+    username: zod.string().min(1, { message: 'Vui lòng nhập tên tài khoản!' }),
+    email: zod
+      .string()
+      .min(1, { message: 'Vui lòng nhập địa chỉ email!' })
+      .email({ message: 'Địa chỉ email không hợp lệ!' }),
+    phone: zod
+      .string()
+      .regex(/^0\d{9}$/, { message: 'Số điện thoại không hợp lệ' }),
+    role: zod.string().min(1, { message: 'Vui lòng chọn cấp độ tài khoản!' }),
+    password: zod
+      .string()
+      .min(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự!' }),
+  });
 
+export type NewUserSchemaType = zod.infer<ReturnType<typeof NewUserSchema>>;
 // ----------------------------------------------------------------------
 
 type Props = {
-  currentUser?: IUserItem;
+  currentUser?: UserItem;
 };
 
 export function UserNewEditForm({ currentUser }: Props) {
   const router = useRouter();
+  const showPassword = useBoolean();
 
   const defaultValues: NewUserSchemaType = {
-    status: '',
-    avatarUrl: null,
-    isVerified: true,
-    name: '',
+    username: '',
     email: '',
-    phoneNumber: '',
-    country: '',
-    state: '',
-    city: '',
-    address: '',
-    zipCode: '',
-    company: '',
-    role: '',
+    phone: '',
+    role: 'ROLE_USER',
+    password: ''
   };
 
   const methods = useForm<NewUserSchemaType>({
     mode: 'onSubmit',
-    resolver: zodResolver(NewUserSchema),
+    resolver: zodResolver(NewUserSchema(!!currentUser)),
     defaultValues,
     values: currentUser,
   });
@@ -94,120 +79,45 @@ export function UserNewEditForm({ currentUser }: Props) {
 
   const onSubmit = handleSubmit(async (data) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const basePayload: UserDto = {
+        username: data.username,
+        email: data.email,
+        phone: data.phone,
+        role: data.role
+      }
+
+      const createPayload = {
+        ...basePayload,
+        password: data.password || ''
+      }
+
+      const updatePayload = {
+        ...basePayload
+      }
+
+      if (!currentUser)
+        await createUser(createPayload);
+      else
+        await updateUser(updatePayload, currentUser.id);
+
       reset();
-      toast.success(currentUser ? 'Update success!' : 'Create success!');
+      toast.success(currentUser ? 'Cập nhật tài khoản thành công!' : 'Tạo tài khoản mới thành công!');
+      await mutate(
+        (k) => typeof k === "string" && k.startsWith('/api/users'),
+        undefined,
+        { revalidate: true }
+      );
       router.push(paths.dashboard.user.list);
-      console.info('DATA', data);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      toast.error(error.message || "Đã có lỗi xảy ra");
     }
   });
 
   return (
     <Form methods={methods} onSubmit={onSubmit}>
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card sx={{ pt: 10, pb: 5, px: 3 }}>
-            {currentUser && (
-              <Label
-                color={
-                  (values.status === 'active' && 'success') ||
-                  (values.status === 'banned' && 'error') ||
-                  'warning'
-                }
-                sx={{ position: 'absolute', top: 24, right: 24 }}
-              >
-                {values.status}
-              </Label>
-            )}
-
-            <Box sx={{ mb: 5 }}>
-              <Field.UploadAvatar
-                name="avatarUrl"
-                maxSize={3145728}
-                helperText={
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      mt: 3,
-                      mx: 'auto',
-                      display: 'block',
-                      textAlign: 'center',
-                      color: 'text.disabled',
-                    }}
-                  >
-                    Allowed *.jpeg, *.jpg, *.png, *.gif
-                    <br /> max size of {fData(3145728)}
-                  </Typography>
-                }
-              />
-            </Box>
-
-            {currentUser && (
-              <FormControlLabel
-                labelPlacement="start"
-                control={
-                  <Controller
-                    name="status"
-                    control={control}
-                    render={({ field }) => (
-                      <Switch
-                        {...field}
-                        checked={field.value !== 'active'}
-                        onChange={(event) =>
-                          field.onChange(event.target.checked ? 'banned' : 'active')
-                        }
-                      />
-                    )}
-                  />
-                }
-                label={
-                  <>
-                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                      Banned
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Apply disable account
-                    </Typography>
-                  </>
-                }
-                sx={{
-                  mx: 0,
-                  mb: 3,
-                  width: 1,
-                  justifyContent: 'space-between',
-                }}
-              />
-            )}
-
-            <Field.Switch
-              name="isVerified"
-              labelPlacement="start"
-              label={
-                <>
-                  <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                    Email verified
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Disabling this will automatically send the user a verification email
-                  </Typography>
-                </>
-              }
-              sx={{ mx: 0, width: 1, justifyContent: 'space-between' }}
-            />
-
-            {currentUser && (
-              <Stack sx={{ mt: 3, alignItems: 'center', justifyContent: 'center' }}>
-                <Button variant="soft" color="error">
-                  Delete user
-                </Button>
-              </Stack>
-            )}
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 12 }}>
           <Card sx={{ p: 3 }}>
             <Box
               sx={{
@@ -217,32 +127,41 @@ export function UserNewEditForm({ currentUser }: Props) {
                 gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' },
               }}
             >
-              <Field.Text name="name" label="Full name" />
-              <Field.Text name="email" label="Email address" />
-              <Field.Phone
-                name="phoneNumber"
-                label="Phone number"
-                country={!currentUser ? 'DE' : undefined}
+              <Field.Text name="username" label="Tên tài khoản" />
+              {!currentUser && (
+                <Field.Text
+                  name="password"
+                  label="Mật khẩu"
+                  placeholder="6+ ký tự"
+                  type={showPassword.value ? 'text' : 'password'}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={showPassword.onToggle} edge="end">
+                            <Iconify icon={showPassword.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'} />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              )}
+              <Field.Text name="email" label="Địa chỉ email" />
+              <Field.Text
+                name="phone"
+                label="Số điện thoại"
               />
-
-              <Field.CountrySelect
-                fullWidth
-                name="country"
-                label="Country"
-                placeholder="Choose a country"
-              />
-
-              <Field.Text name="state" label="State/region" />
-              <Field.Text name="city" label="City" />
-              <Field.Text name="address" label="Address" />
-              <Field.Text name="zipCode" label="Zip/code" />
-              <Field.Text name="company" label="Company" />
-              <Field.Text name="role" label="Role" />
+              <Field.Select name="role" label="Cấp độ tài khoản">
+                <MenuItem key="ROLE_ADMIN" value="ROLE_ADMIN">Quản trị viên</MenuItem>
+                <MenuItem key="ROLE_USER" value="ROLE_USER">Người dùng (Khách hàng)</MenuItem>
+              </Field.Select>
             </Box>
 
             <Stack sx={{ mt: 3, alignItems: 'flex-end' }}>
               <Button type="submit" variant="contained" loading={isSubmitting}>
-                {!currentUser ? 'Create user' : 'Save changes'}
+                {!currentUser ? 'Tạo tài khoản' : 'Lưu thay đổi'}
               </Button>
             </Stack>
           </Card>

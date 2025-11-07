@@ -1,5 +1,4 @@
 import type { StepperProps } from '@mui/material/Stepper';
-import type { CheckoutContextValue } from 'src/types/checkout';
 
 import Box from '@mui/material/Box';
 import Step from '@mui/material/Step';
@@ -9,30 +8,42 @@ import StepLabel, { stepLabelClasses } from '@mui/material/StepLabel';
 import MuiStepConnector, { stepConnectorClasses } from '@mui/material/StepConnector';
 
 import { Iconify } from 'src/components/iconify';
+import { TourCheckoutContextValue } from 'src/types/booking';
 
 // ----------------------------------------------------------------------
 
 type Props = StepperProps & {
-  steps: CheckoutContextValue['steps'];
-  activeStep: CheckoutContextValue['activeStep'];
+  steps: TourCheckoutContextValue['steps'];
+  activeStep: TourCheckoutContextValue['activeStep'];
 };
 
 export function CheckoutSteps({ steps, activeStep, sx, ...other }: Props) {
   return (
     <Stepper
       alternativeLabel
-      activeStep={activeStep}
+      activeStep={activeStep ?? 0}
       connector={<StepConnector />}
       sx={[{ mb: { xs: 3, md: 5 } }, ...(Array.isArray(sx) ? sx : [sx])]}
       {...other}
     >
-      {steps.map((label) => (
+      {steps.map((label, index) => (
         <Step key={label}>
           <StepLabel
-            slots={{ stepIcon: StepIcon }}
-            sx={{ [`& .${stepLabelClasses.label}`]: { fontWeight: 'fontWeightSemiBold' } }}
+            StepIconComponent={(props) => (
+              <StepIcon {...props} stepIndex={index} label={label} />
+            )}
+            sx={{
+              [`& .${stepLabelClasses.label}`]: {
+                fontWeight: 'fontWeightSemiBold',
+                textTransform: 'capitalize',
+              },
+            }}
           >
-            {label}
+            {label === 'Tour'
+              ? 'Xác nhận thông tin'
+              : label === 'Contact info'
+                ? 'Thông tin liên hệ'
+                : 'Thanh toán'}
           </StepLabel>
         </Step>
       ))}
@@ -40,8 +51,7 @@ export function CheckoutSteps({ steps, activeStep, sx, ...other }: Props) {
   );
 }
 
-// ----------------------------------------------------------------------
-
+// -----------------------------
 const StepConnector = styled(MuiStepConnector)(({ theme }) => ({
   top: 10,
   left: 'calc(-50% + 20px)',
@@ -55,36 +65,36 @@ const StepConnector = styled(MuiStepConnector)(({ theme }) => ({
   },
 }));
 
+// -----------------------------
 type StepIconProps = {
   active?: boolean;
   completed?: boolean;
+  stepIndex: number;
+  label: string;
 };
 
-function StepIcon({ active, completed }: StepIconProps) {
+function StepIcon({ active, completed, stepIndex }: StepIconProps) {
+  const icons: Record<number, string> = {
+    0: 'ri:contract-line',
+    1: 'solar:user-bold',
+    2: 'solar:card-bold',
+  };
+  const icon = icons[stepIndex] ?? 'solar:check-circle-bold';
   return (
     <Box
       sx={{
-        width: 24,
-        height: 24,
+        width: 32,
+        height: 32,
         display: 'flex',
         alignItems: 'center',
-        color: 'text.disabled',
         justifyContent: 'center',
-        ...(active && { color: 'primary.main' }),
+        borderRadius: '50%',
+        bgcolor: completed ? 'primary.main' : active ? 'primary.lighter' : 'action.hover',
+        color: completed ? 'common.white' : active ? 'primary.main' : 'text.disabled',
+        transition: 'all 0.3s',
       }}
     >
-      {completed ? (
-        <Iconify icon="eva:checkmark-fill" sx={{ color: 'primary.main' }} />
-      ) : (
-        <Box
-          sx={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            backgroundColor: 'currentColor',
-          }}
-        />
-      )}
+      <Iconify icon={completed ? 'eva:checkmark-fill' : icon} width={20} />
     </Box>
   );
 }

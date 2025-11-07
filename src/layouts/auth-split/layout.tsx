@@ -116,11 +116,11 @@ export function AuthSplitLayout({
           : [slotProps?.main?.sx]),
       ]}
     >
-      {/* <AuthSplitSection
+      <AuthSplitSection
         layoutQuery={layoutQuery}
         method={CONFIG.auth.method}
         {...slotProps?.section}
-      /> */}
+      />
       <AuthSplitContent layoutQuery={layoutQuery} {...slotProps?.content}>
         {children}
       </AuthSplitContent>
@@ -129,17 +129,8 @@ export function AuthSplitLayout({
 
   return (
     <LayoutSection
-      /** **************************************
-       * @Header
-       *************************************** */
       headerSection={renderHeader()}
-      /** **************************************
-       * @Footer
-       *************************************** */
       footerSection={renderFooter()}
-      /** **************************************
-       * @Styles
-       *************************************** */
       cssVars={{ '--layout-auth-content-width': '420px', ...cssVars }}
       sx={sx}
     >

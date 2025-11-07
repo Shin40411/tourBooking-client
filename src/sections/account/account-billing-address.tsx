@@ -82,14 +82,6 @@ export function AccountBillingAddress({ addressBook }: Props) {
     </CustomPopover>
   );
 
-  const renderNewAddressForm = () => (
-    <AddressNewForm
-      open={newAddressForm.value}
-      onClose={newAddressForm.onFalse}
-      onCreate={handleAddNewAddress}
-    />
-  );
-
   return (
     <>
       <Card>
@@ -130,7 +122,6 @@ export function AccountBillingAddress({ addressBook }: Props) {
       </Card>
 
       {renderMenuActions()}
-      {renderNewAddressForm()}
     </>
   );
 }

@@ -22,12 +22,33 @@ import { varFade, varScale, MotionViewport } from 'src/components/animate';
 
 import { SectionTitle } from './components/section-title';
 import { FloatLine, FloatXIcon } from './components/svg-elements';
-import { Chip } from '@mui/material';
+import { Chip, Skeleton } from '@mui/material';
+import { useGetTours } from 'src/actions/tour';
+import { fCurrencyVN } from 'src/utils/format-number';
+import { TourItem } from 'src/types/tour';
+import { EmptyContent } from 'src/components/empty-content';
+import { useNavigate } from 'react-router';
 
 // ----------------------------------------------------------------------
 
 export function HomePricing({ sx, ...other }: BoxProps) {
-  const tabs = useTabs('Standard');
+  const { tours: PLANS = [], toursEmpty, toursLoading } = useGetTours(undefined, 1, 3);
+
+  const renderSkeletonDesktop = () => (
+    <Box gridTemplateColumns="repeat(3, 1fr)" sx={{ display: { xs: 'none', md: 'grid' }, gap: 3 }}>
+      {[...Array(3)].map((_, i) => (
+        <PlanCardSkeleton key={i} />
+      ))}
+    </Box>
+  );
+
+  const renderSkeletonMobile = () => (
+    <Stack spacing={5} alignItems="center" sx={{ display: { md: 'none' } }}>
+      {[...Array(3)].map((_, i) => (
+        <PlanCardSkeleton key={i} />
+      ))}
+    </Stack>
+  );
 
   const renderDescription = () => (
     <SectionTitle
@@ -40,9 +61,12 @@ export function HomePricing({ sx, ...other }: BoxProps) {
 
   const renderContentDesktop = () => (
     <Box gridTemplateColumns="repeat(3, 1fr)" sx={{ display: { xs: 'none', md: 'grid' } }}>
-      {PLANS.map((plan) => (
-        <PlanCard key={plan.name} plan={plan} />
-      ))}
+      {Array.isArray(PLANS) &&
+        PLANS.filter(
+          (plan) => plan.date !== null && new Date(plan.date) >= new Date()
+        ).map((plan) => (
+          <PlanCard key={plan.id} plan={plan} />
+        ))}
     </Box>
   );
 
@@ -52,9 +76,12 @@ export function HomePricing({ sx, ...other }: BoxProps) {
       alignItems="center"
       sx={{ display: { md: 'none' } }}
     >
-      {PLANS.map((plan) => (
-        <PlanCard key={plan.name} plan={plan} />
-      ))}
+      {Array.isArray(PLANS) &&
+        PLANS.filter(
+          (plan) => plan.date !== null && new Date(plan.date) >= new Date()
+        ).map((plan) => (
+          <PlanCard key={plan.id} plan={plan} />
+        ))}
     </Stack>
   );
 
@@ -73,30 +100,44 @@ export function HomePricing({ sx, ...other }: BoxProps) {
 
         <Container>{renderDescription()}</Container>
 
-        <Box
-          sx={(theme) => ({
-            position: 'relative',
-            '&::before, &::after': {
-              width: 64,
-              height: 64,
-              content: "''",
-              [theme.breakpoints.up(1440)]: { display: 'block' },
-            },
-          })}
-        >
-          <Container>{renderContentDesktop()}</Container>
+        {toursEmpty ?
+          <Box pb={10}>
+            <EmptyContent />
+          </Box>
+          :
+          <>
+            <Box
+              sx={(theme) => ({
+                position: 'relative',
+                '&::before, &::after': {
+                  width: 64,
+                  height: 64,
+                  content: "''",
+                  [theme.breakpoints.up(1440)]: { display: 'block' },
+                },
+              })}
+            >
+              <Container>{toursLoading ? renderSkeletonDesktop() : renderContentDesktop()}</Container>
 
-        </Box>
+            </Box>
 
-        <Container>{renderContentMobile()}</Container>
+            <Container> {toursLoading ? renderSkeletonMobile() : renderContentMobile()}</Container>
+          </>
+        }
       </MotionViewport>
     </Box>
   );
 }
 
 // ----------------------------------------------------------------------
+interface PlanCardProps {
+  plan: TourItem;
+  sx?: object;
+  [key: string]: any;
+}
 
-function PlanCard({ plan, sx, ...other }: any) {
+function PlanCard({ plan, sx, ...other }: PlanCardProps) {
+  const navigate = useNavigate();
   return (
     <MotionViewport>
       <Box
@@ -132,7 +173,7 @@ function PlanCard({ plan, sx, ...other }: any) {
           <Box
             component="img"
             src={plan.image}
-            alt={plan.name}
+            alt={plan.title}
             sx={{
               width: 1,
               height: 1,
@@ -158,13 +199,13 @@ function PlanCard({ plan, sx, ...other }: any) {
               fontWeight: 700,
             }}
           >
-            {plan.name}
+            {plan.title}
           </Typography>
         </Box>
 
         <m.div variants={varFade('inUp', { distance: 24 })}>
           <Typography variant="h4" color="primary.main">
-            {plan.price.toLocaleString()} ₫
+            {fCurrencyVN(plan.price)}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {plan.duration}
@@ -174,8 +215,8 @@ function PlanCard({ plan, sx, ...other }: any) {
         <Stack spacing={1.5}>
           <Typography variant="subtitle2">Điểm đến</Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            {plan.destinations.map((d: string) => (
-              <Chip key={d} label={d} variant="outlined" size="small" />
+            {plan.locations.map((d) => (
+              <Chip key={d.id} label={d.name} variant="outlined" size="small" />
             ))}
           </Stack>
         </Stack>
@@ -207,7 +248,7 @@ function PlanCard({ plan, sx, ...other }: any) {
             color="primary"
             size="large"
             sx={{ mt: 2 }}
-            href="#"
+            onClick={() => navigate(`${paths.homeTour.details(String(plan.id))}`)}
             startIcon={<Iconify icon="fa7-solid:sign-hanging" />}
           >
             Đặt tour ngay
@@ -221,50 +262,57 @@ function PlanCard({ plan, sx, ...other }: any) {
 
 // ----------------------------------------------------------------------
 
-const PLANS = [
-  {
-    name: 'Tour Trọn Gói',
-    price: 4990000,
-    duration: '5 ngày 4 đêm',
-    destinations: ['Phú Quốc', 'Nha Trang'],
-    includes: [
-      'Khách sạn 4 sao',
-      'Ăn uống cao cấp',
-      'Hướng dẫn viên chuyên nghiệp',
-      'Vé máy bay khứ hồi',
-      'Bảo hiểm du lịch',
-    ],
-    extras: ['Xe đưa đón sân bay', 'Quà lưu niệm'],
-    image: `${CONFIG.assetsDir}/assets/images/travel/phuquoc.jpg`,
-  },
-  {
-    name: 'Tour Cơ Bản',
-    price: 2990000,
-    duration: '3 ngày 2 đêm',
-    destinations: ['Đà Lạt', 'Vũng Tàu'],
-    includes: [
-      'Khách sạn 3 sao',
-      'Ăn uống theo chương trình',
-      'Hướng dẫn viên du lịch',
-      'Vé tham quan các điểm đến',
-    ],
-    extras: ['Xe đưa đón tận nơi'],
-    image: `${CONFIG.assetsDir}/assets/images/travel/dalat.jpg`,
-  },
-  {
-    name: 'Tour Cao Cấp',
-    price: 8990000,
-    duration: '7 ngày 6 đêm',
-    destinations: ['Hà Nội', 'Hạ Long', 'Sapa'],
-    includes: [
-      'Khách sạn 5 sao',
-      'Ẩm thực đặc sản vùng miền',
-      'Hướng dẫn viên song ngữ',
-      'Vé tàu – vé tham quan cao cấp',
-      'Bảo hiểm du lịch toàn phần',
-    ],
-    extras: ['Quà tặng VIP', 'Dịch vụ chăm sóc 24/7'],
-    image: `${CONFIG.assetsDir}/assets/images/travel/halong.jpg`,
-  },
-];
+function PlanCardSkeleton() {
+  return (
+    <Box
+      sx={(theme) => ({
+        px: 4,
+        py: 6,
+        gap: 4,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 2,
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: `0 0 12px ${theme.vars
+          ? `rgba(${theme.vars.palette.grey['500Channel']},0.15)`
+          : theme.palette.grey[500]}33`,
+        backgroundColor: theme.vars
+          ? theme.vars.palette.background.paper
+          : theme.palette.background.paper,
+      })}
+    >
+      <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 2 }} />
 
+      <Box>
+        <Skeleton width="60%" height={28} />
+        <Skeleton width="40%" />
+      </Box>
+
+      <Box>
+        <Skeleton width="30%" />
+        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} variant="rounded" width={60} height={24} />
+          ))}
+        </Stack>
+      </Box>
+
+      <Box>
+        <Skeleton width="40%" />
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} width="80%" />
+        ))}
+      </Box>
+
+      <Box>
+        <Skeleton width="50%" />
+        {[...Array(2)].map((_, i) => (
+          <Skeleton key={i} width="70%" />
+        ))}
+      </Box>
+
+      <Skeleton variant="rectangular" height={48} sx={{ borderRadius: 1, mt: 2 }} />
+    </Box>
+  );
+}

@@ -16,6 +16,7 @@ import { signOut as jwtSignOut } from 'src/auth/context/jwt/action';
 import { signOut as amplifySignOut } from 'src/auth/context/amplify/action';
 import { signOut as supabaseSignOut } from 'src/auth/context/supabase/action';
 import { signOut as firebaseSignOut } from 'src/auth/context/firebase/action';
+import { JWT_USER_INFO } from 'src/auth/context/jwt';
 
 // ----------------------------------------------------------------------
 
@@ -39,8 +40,8 @@ export function SignOutButton({ onClose, sx, ...other }: Props) {
   const handleLogout = useCallback(async () => {
     try {
       await signOut();
-      await checkUserSession?.();
-
+      // await checkUserSession?.();
+      sessionStorage.removeItem(JWT_USER_INFO);
       onClose?.();
       router.refresh();
     } catch (error) {

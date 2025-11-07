@@ -6,7 +6,9 @@ import { Image } from 'src/components/image';
 import { fCurrencyVN } from 'src/utils/format-number';
 import type { TourItem as ITourItem } from 'src/types/tour';
 import { usePopover } from 'minimal-shared/hooks';
-import { fDateTime } from 'src/utils/format-time-vi';
+import { fDate, fDateTime } from 'src/utils/format-time-vi';
+import { CONFIG } from 'src/global-config';
+import { useCountdown } from 'src/actions/tour';
 
 type Props = CardProps & {
   tour: ITourItem;
@@ -16,6 +18,8 @@ type Props = CardProps & {
 };
 
 export function TourItem({ tour, editHref, detailsHref, onDelete, sx, ...other }: Props) {
+  const targetDate = tour.date ? new Date(tour.date) : null;
+  const { days, hours, minutes, seconds, isExpired } = useCountdown(targetDate);
   const menuActions = usePopover();
 
   const renderPrice = () => (
@@ -42,13 +46,25 @@ export function TourItem({ tour, editHref, detailsHref, onDelete, sx, ...other }
     <Box sx={{ p: 1, position: 'relative' }}>
       {renderPrice()}
       <Image alt={tour.title} src={tour.image} sx={{ width: 1, height: 200, borderRadius: 1 }} />
+      {isExpired && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 8,
+            borderRadius: 1,
+            backgroundColor: 'rgb(0 0 0 / 45%)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 1,
+          }}
+        />
+      )}
     </Box>
   );
 
   const renderTexts = () => (
     <ListItemText
       sx={(theme) => ({ p: theme.spacing(2.5, 2.5, 2, 2.5) })}
-      primary={`Lượt đặt tour: ${tour.slots}`}
+      primary={`Còn lại: ${tour.slots} lượt trống`}
       secondary={
         <Link component={RouterLink} href={detailsHref} color="inherit">
           {tour.title}
@@ -56,7 +72,7 @@ export function TourItem({ tour, editHref, detailsHref, onDelete, sx, ...other }
       }
       slotProps={{
         primary: {
-          sx: { typography: 'caption', color: 'text.disabled' },
+          sx: { typography: 'caption', color: 'text.primary' },
         },
         secondary: {
           noWrap: true,
@@ -83,7 +99,18 @@ export function TourItem({ tour, editHref, detailsHref, onDelete, sx, ...other }
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, typography: 'body2' }}>
         <Iconify icon="solar:calendar-bold" sx={{ color: 'info.main' }} />
-        {fDateTime(tour.date)}
+        {fDate(tour.date)}
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, typography: 'body2' }}>
+        <Iconify icon={isExpired ? "pajamas:time-out" : "mdi:clock-outline"} sx={{ color: 'warning.main' }} />
+        {isExpired ? (
+          'Đã khởi hành'
+        ) : (
+          <>
+            Còn {days} ngày {hours} giờ {minutes} phút {seconds} giây
+          </>
+        )}
       </Box>
 
       {tour.locations.length > 0 && (
@@ -115,16 +142,18 @@ export function TourItem({ tour, editHref, detailsHref, onDelete, sx, ...other }
             Sửa
           </MenuItem>
         </li>
-        <MenuItem
-          onClick={() => {
-            menuActions.onClose();
-            onDelete();
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <Iconify icon="solar:trash-bin-trash-bold" />
-          Xóa
-        </MenuItem>
+        {isExpired &&
+          <MenuItem
+            onClick={() => {
+              menuActions.onClose();
+              onDelete();
+            }}
+            sx={{ color: 'error.main' }}
+          >
+            <Iconify icon="solar:trash-bin-trash-bold" />
+            Xóa
+          </MenuItem>
+        }
       </MenuList>
     </CustomPopover>
   );

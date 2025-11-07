@@ -8,16 +8,16 @@ import { useGetTour } from 'src/actions/tour';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Tour edit | Dashboard - ${CONFIG.appName}` };
+const metadata = { title: `Chỉnh sửa tour | Quản lý - ${CONFIG.appName}` };
 
 export default function Page() {
   const { id = '' } = useParams();
-  const { tour } = useGetTour(Number(id));
+  const { tour, mutateTour } = useGetTour(Number(id));
   return (
     <>
       <title>{metadata.title}</title>
 
-      <TourEditView tour={tour} />
+      <TourEditView tour={tour} mutateTour={mutateTour} />
     </>
   );
 }

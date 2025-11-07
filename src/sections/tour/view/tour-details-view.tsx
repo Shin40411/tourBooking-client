@@ -21,6 +21,7 @@ import { useGetTour } from 'src/actions/tour';
 import { redirect } from 'react-router';
 import { RoleBasedGuard } from 'src/auth/guard';
 import { useAuthContext } from 'src/auth/hooks';
+import { useGetBookedByTour } from 'src/actions/booking';
 
 // ----------------------------------------------------------------------
 
@@ -32,6 +33,14 @@ export function TourDetailsView() {
   if (!id) redirect(paths.page404);
 
   const { tour, tourLoading, tourError } = useGetTour(Number(id));
+
+  const { pagination: { totalRecord } } = useGetBookedByTour({
+    tourId: Number(id),
+    pageSize: 1,
+    pageNumber: 999,
+    enabled: !!id
+  })
+
   const tabs = useTabs('content');
 
   // const handleChangePublish = useCallback((newValue: string) => {
@@ -58,7 +67,7 @@ export function TourDetailsView() {
           value={tab.value}
           label={tab.label}
           icon={
-            tab.value === 'bookers' ? <Label variant="filled">{tour?.slots}</Label> : ''
+            tab.value === 'bookers' ? <Label variant="filled">{totalRecord}</Label> : ''
           }
         />
       ))}
@@ -72,7 +81,7 @@ export function TourDetailsView() {
 
         {renderTabs()}
         {tabs.value === 'content' && <TourDetailsContent tour={tour} />}
-        {/* {tabs.value === 'bookers' && <TourDetailsBookers bookers={tour?.bookers} />} */}
+        {tabs.value === 'bookers' && <TourDetailsBookers tourId={tour?.id || 0} />}
       </DashboardContent>
     </RoleBasedGuard>
   );

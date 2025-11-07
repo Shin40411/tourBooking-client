@@ -1,64 +1,51 @@
-import type { IAddressItem } from 'src/types/common';
 
 import { z as zod } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { isValidPhoneNumber } from 'react-phone-number-input/input';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
 
-import { Form, Field, schemaHelper } from 'src/components/hook-form';
+import { Form, Field } from 'src/components/hook-form';
+import { IContactInfo, TourCheckoutContextValue } from 'src/types/booking';
+import { Iconify } from 'src/components/iconify';
+import { Card, CardActions, CardContent, Typography } from '@mui/material';
+import { useEffect } from 'react';
+import { fetchUserInfo } from 'src/actions/user';
+import { JWT_USER_INFO } from 'src/auth/context/jwt';
 
 // ----------------------------------------------------------------------
 
-export type NewAddressSchemaType = zod.infer<typeof NewAddressSchema>;
-
-export const NewAddressSchema = zod.object({
-  city: zod.string().min(1, { message: 'City is required!' }),
-  state: zod.string().min(1, { message: 'State is required!' }),
-  name: zod.string().min(1, { message: 'Name is required!' }),
-  address: zod.string().min(1, { message: 'Address is required!' }),
-  zipCode: zod.string().min(1, { message: 'Zip code is required!' }),
-  phoneNumber: schemaHelper.phoneNumber({ isValid: isValidPhoneNumber }),
-  country: schemaHelper.nullableInput(zod.string().min(1, { message: 'Country is required!' }), {
-    // message for null value
-    message: 'Country is required!',
-  }),
-  // Not required
-  primary: zod.boolean(),
-  addressType: zod.string(),
+const TourContactSchema = zod.object({
+  fullName: zod.string().min(1, { message: 'Họ và tên là bắt buộc' }),
+  email: zod.string().email({ message: 'Email không hợp lệ' }),
+  phone: zod.string().min(1, { message: 'Số điện thoại là bắt buộc' }).regex(/^0\d{9}$/, { message: 'Số điện thoại không hợp lệ (Bắt buộc 10 số)' }),
+  note: zod.string().optional(),
 });
 
-// ----------------------------------------------------------------------
+export type TourContactSchemaType = zod.infer<typeof TourContactSchema>;
 
+// ----------------------------------------------------------------------
 type Props = {
-  open: boolean;
-  onClose: () => void;
-  onCreate: (address: IAddressItem) => void;
+  onSetContactInfo: TourCheckoutContextValue['onSetContactInfo'];
+  onChangeStep: (type: "next" | "go" | "back", step?: number | undefined) => void;
+  savedInfo: IContactInfo | null;
 };
 
-export function AddressNewForm({ open, onClose, onCreate }: Props) {
-  const defaultValues: NewAddressSchemaType = {
-    name: '',
-    city: '',
-    state: '',
-    address: '',
-    zipCode: '',
-    country: '',
-    primary: true,
-    phoneNumber: '',
-    addressType: 'Home',
+export function AddressNewForm({ onSetContactInfo, onChangeStep, savedInfo }: Props) {
+  const defaultValues: TourContactSchemaType = {
+    fullName: savedInfo?.fullName || '',
+    email: savedInfo?.email || '',
+    phone: savedInfo?.phone || '',
+    note: savedInfo?.note || '',
   };
 
-  const methods = useForm<NewAddressSchemaType>({
+  const userInfo = sessionStorage.getItem(JWT_USER_INFO);
+
+  const methods = useForm<TourContactSchemaType>({
     mode: 'all',
-    resolver: zodResolver(NewAddressSchema),
+    resolver: zodResolver(TourContactSchema),
     defaultValues,
   });
 
@@ -67,83 +54,68 @@ export function AddressNewForm({ open, onClose, onCreate }: Props) {
     formState: { isSubmitting },
   } = methods;
 
+  useEffect(() => {
+    const loadUser = async () => {
+      if (!userInfo || savedInfo) return;
+      const parsedUserInfo = JSON.parse(userInfo);
+      try {
+        const res = await fetchUserInfo(parsedUserInfo.id);
+        methods.setValue('fullName', res.username || '');
+        methods.setValue('email', res.email || '');
+        methods.setValue('phone', res.phone || '');
+      } catch (err) {
+        console.error('Không thể tải thông tin người dùng:', err);
+      }
+    };
+
+    loadUser();
+  }, [userInfo, methods]);
+
   const onSubmit = handleSubmit(async (data) => {
     try {
-      onCreate({
-        name: data.name,
-        phoneNumber: data.phoneNumber,
-        fullAddress: `${data.address}, ${data.city}, ${data.state}, ${data.country}, ${data.zipCode}`,
-        addressType: data.addressType,
-        primary: data.primary,
-      });
-      onClose();
+      const info: IContactInfo = {
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        note: data.note,
+      };
+
+      onSetContactInfo(info);
+      onChangeStep('next');
     } catch (error) {
       console.error(error);
     }
   });
 
   return (
-    <Dialog fullWidth maxWidth="sm" open={open} onClose={onClose}>
-      <Form methods={methods} onSubmit={onSubmit}>
-        <DialogTitle>New address</DialogTitle>
-
-        <DialogContent dividers>
+    <Form methods={methods} onSubmit={onSubmit}>
+      <Card>
+        <Box pt={4} px={4}>
+          <Typography variant='h5'>Thông tin liên hệ</Typography>
+        </Box>
+        <CardContent>
           <Stack spacing={3}>
-            <Field.RadioGroup
-              row
-              name="addressType"
-              options={[
-                { label: 'Home', value: 'Home' },
-                { label: 'Office', value: 'Office' },
-              ]}
-            />
-
-            <Box
-              sx={{
-                rowGap: 3,
-                columnGap: 2,
-                display: 'grid',
-                gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' },
-              }}
-            >
-              <Field.Text name="name" label="Full name" />
-
-              <Field.Phone name="phoneNumber" label="Phone number" country="US" />
-            </Box>
-
-            <Field.Text name="address" label="Address" />
-
-            <Box
-              sx={{
-                rowGap: 3,
-                columnGap: 2,
-                display: 'grid',
-                gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(3, 1fr)' },
-              }}
-            >
-              <Field.Text name="city" label="Town/city" />
-
-              <Field.Text name="state" label="State" />
-
-              <Field.Text name="zipCode" label="Zip/code" />
-            </Box>
-
-            <Field.CountrySelect name="country" label="Country" placeholder="Choose a country" />
-
-            <Field.Checkbox name="primary" label="Use this address as default." />
+            <Field.Text name="fullName" label="Họ và tên liên hệ" />
+            <Field.Text name="email" label="Email" />
+            <Field.Text name="phone" label="Số điện thoại" />
+            <Field.Text name="note" label="Ghi chú" multiline rows={3} />
           </Stack>
-        </DialogContent>
+        </CardContent>
 
-        <DialogActions>
-          <Button color="inherit" variant="outlined" onClick={onClose}>
-            Cancel
+        <CardActions sx={{ pb: 4, px: 4, display: 'flex', justifyContent: 'space-between' }}>
+          <Button
+            size="small"
+            color="inherit"
+            onClick={() => onChangeStep('back')}
+            startIcon={<Iconify icon="eva:arrow-ios-back-fill" />}
+          >
+            Quay lại
           </Button>
-
           <Button type="submit" variant="contained" loading={isSubmitting}>
-            Deliver to this address
+            Lưu thông tin
           </Button>
-        </DialogActions>
-      </Form>
-    </Dialog>
+        </CardActions>
+      </Card>
+    </Form>
   );
 }
